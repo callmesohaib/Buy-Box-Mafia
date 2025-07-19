@@ -55,7 +55,9 @@ exports.importBuyers = async (req, res) => {
     const batch = db.batch();
     buyers.forEach((b) => {
       const ref = db.collection("buyers").doc();
-      batch.set(ref, toFirestoreBuyer(b));
+      const buyerData = toFirestoreBuyer(b);
+      buyerData.submittedBy = b.submittedBy || 'Unknown';
+      batch.set(ref, buyerData);
     });
     await batch.commit();
     res

@@ -8,8 +8,10 @@ import {
   Search
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { buttonHover } from "../../../animations/animation";
+import { useState, useEffect, useRef } from "react";
+import { buttonHover, fadeInUp, scaleIn } from "../../../animations/animation";
+import Papa from "papaparse";
+import { toast } from 'react-toastify';
 
 function getInitials(name) {
   return name
@@ -68,13 +70,17 @@ export default function BuyersPanel() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [loading, setLoading] = useState(true);
+  const [importError, setImportError] = useState("");
 
   const userRole = localStorage.getItem('role');
 
   const fetchBuyers = async () => {
+    setLoading(true);
     const response = await fetch("http://localhost:3001/api/buyers");
     const data = await response.json();
     setBuyers(data);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -121,14 +127,14 @@ export default function BuyersPanel() {
         method: "DELETE",
       });
       if (response.ok) {
-        alert("Buyer deleted successfully");
+        toast.success("Buyer deleted successfully");
         fetchBuyers();
       } else {
-        alert("Failed to delete buyer");
+        toast.error("Failed to delete buyer");
       }
     } catch (error) {
       console.error("Error deleting buyer:", error);
-      alert("Failed to delete buyer");
+      toast.error("Failed to delete buyer");
     }
   };
 
@@ -141,8 +147,69 @@ export default function BuyersPanel() {
       navigate(`/buyer/edit/${buyer.id}`, { state: { buyerData: buyer } });
     }
   };
+
+  // CSV Import logic
+  const fileInputRef = useRef();
+  const [importing, setImporting] = useState(false);
+
+  const handleImportClick = () => {
+    if (fileInputRef.current) fileInputRef.current.value = null;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting(true);
+    setImportError("");
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let buyers = results.data;
+        const submittedBy = localStorage.getItem('name') || 'Unknown';
+        buyers = buyers.map(b => ({ ...b, submittedBy }));
+        try {
+          const response = await fetch("http://localhost:3001/api/buyers/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ buyers }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            toast.success(`${buyers.length} buyers imported successfully!`);
+            fetchBuyers();
+          } else {
+            setImportError(data.message || "Failed to import buyers");
+            toast.error(data.message || "Failed to import buyers");
+          }
+        } catch (err) {
+          setImportError("Error importing buyers");
+          toast.error("Error importing buyers");
+        }
+        setImporting(false);
+      },
+      error: () => {
+        setImportError("Failed to parse CSV file");
+        toast.error("Failed to parse CSV file");
+        setImporting(false);
+      }
+    });
+  };
+
+  if (loading) {
+    return (
+      <motion.div className="flex items-center justify-center min-h-[300px]" variants={fadeInUp} initial="initial" animate="animate">
+        <svg className="animate-spin h-8 w-8 text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </motion.div>
+    );
+  }
+
   return (
-    <div className="bg-gray-900 rounded-xl p-4 md:p-6">
+    <motion.div className="bg-gray-900 rounded-xl p-4 md:p-6" variants={scaleIn} initial="initial" animate="animate">
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
@@ -166,15 +233,27 @@ export default function BuyersPanel() {
               <span className="hidden md:inline">Add Buyer</span>
             </button>
             <button
-              onClick={() => {/* TODO: Implement import functionality */ }}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              onClick={handleImportClick}
+              disabled={importing}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Upload size={16} />
-              <span className="hidden md:inline">Import</span>
+              <span className="hidden md:inline">{importing ? "Importing..." : "Import"}</span>
             </button>
+            <input
+              type="file"
+              accept=".csv"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
           </div>
         )}
       </div>
+
+      {importError && (
+        <div className="text-center text-red-400 font-medium mb-4">{importError}</div>
+      )}
 
       {/* Table for md+ */}
       <div className="overflow-x-auto rounded-lg  border border-gray-700 hidden md:block" >
@@ -296,6 +375,6 @@ export default function BuyersPanel() {
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

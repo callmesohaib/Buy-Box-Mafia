@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { fadeInUp, scaleIn } from "../../../animations/animation"
 import { Check } from "lucide-react"
+import { toast } from 'react-toastify';
 
 const steps = [
   "Basic Info",
@@ -85,11 +86,11 @@ export default function BuyerForm({ onClose }) {
         });
         data = await response.json();
         if (data.success) {
-          alert("Buyer updated!");
+          toast.success("Buyer updated!");
           if (onClose) onClose();
           else navigate(-1);
         } else {
-          alert(data.message || "Failed to update buyer");
+          toast.error(data.message || "Failed to update buyer");
         }
       } else {
         response = await fetch("http://localhost:3001/api/buyers", {
@@ -99,15 +100,15 @@ export default function BuyerForm({ onClose }) {
         });
         data = await response.json();
         if (data.success) {
-          alert("Buyer added!");
+          toast.success("Buyer added!");
           if (onClose) onClose();
           else navigate(-1);
         } else {
-          alert(data.message || "Failed to add buyer");
+          toast.error(data.message || "Failed to add buyer");
         }
       }
     } catch (err) {
-      alert(isEdit ? "Error updating buyer" : "Error adding buyer");
+      toast.error(isEdit ? "Error updating buyer" : "Error adding buyer");
     }
   };
 
