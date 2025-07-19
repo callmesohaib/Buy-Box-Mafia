@@ -101,7 +101,7 @@ export default function SubadminForm({ onClose }) {
         onClick={() => (onClose ? onClose() : navigate(-1))}
         className="mb-6 text-amber-400 hover:text-amber-300 transition-colors"
       >
-        ← Back to Users
+        ← Back to Subadmins
       </button>
       <h2 className="text-2xl font-bold mb-6 text-white">
         {isEditMode ? "Edit Subadmin" : "Add New Subadmin"}
