@@ -14,7 +14,8 @@ const transporter = nodemailer.createTransport({
 
 // Generate random password
 const generatePassword = () => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
   let password = "";
   for (let i = 0; i < 12; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -24,9 +25,13 @@ const generatePassword = () => {
 
 // Send email with credentials
 const sendSubadminCredentials = async (email, password, name, role) => {
-  const roleDisplayName = role === ROLES.SUBADMIN ? 'Subadmin' : 
-                         role === ROLES.SCOUT ? 'Scout' : 'Admin';
-  
+  const roleDisplayName =
+    role === ROLES.SUBADMIN
+      ? "Subadmin"
+      : role === ROLES.SCOUT
+      ? "Scout"
+      : "Admin";
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -94,7 +99,10 @@ const addSubadmin = async (req, res) => {
     }
 
     // Check if user already exists in Firestore
-    const existingUserQuery = await db.collection("users").where("email", "==", email).get();
+    const existingUserQuery = await db
+      .collection("users")
+      .where("email", "==", email)
+      .get();
     if (!existingUserQuery.empty) {
       return res.status(400).json({
         success: false,
@@ -113,7 +121,7 @@ const addSubadmin = async (req, res) => {
       }
     } catch (error) {
       // User doesn't exist, which is what we want
-      if (error.code !== 'auth/user-not-found') {
+      if (error.code !== "auth/user-not-found") {
         throw error;
       }
     }
@@ -132,7 +140,6 @@ const addSubadmin = async (req, res) => {
     // Set custom claims for role
     await admin.auth().setCustomUserClaims(userRecord.uid, {
       role: role,
-      permissions: permissions || ["read", "write"],
     });
 
     // Store user data in Firestore "users" collection
@@ -142,8 +149,8 @@ const addSubadmin = async (req, res) => {
       email: email,
       phone: phone,
       location: location,
+      password: hashedPassword,
       role: role,
-      permissions: permissions || ["read", "write"],
       status: "active",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: req.user?.uid || "admin", // Assuming you have user info in request
@@ -162,7 +169,9 @@ const addSubadmin = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `${role.charAt(0).toUpperCase() + role.slice(1)} created successfully`,
+      message: `${
+        role.charAt(0).toUpperCase() + role.slice(1)
+      } created successfully`,
       data: {
         uid: userRecord.uid,
         name: name,
@@ -176,7 +185,7 @@ const addSubadmin = async (req, res) => {
     console.error("Error details:", {
       code: error.code,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     res.status(500).json({
       success: false,
@@ -191,12 +200,12 @@ const getAllSubadmins = async (req, res) => {
   try {
     const { role } = req.query;
     let usersQuery = db.collection("users");
-    
+
     // If role is specified, filter by role
     if (role && Object.values(ROLES).includes(role)) {
       usersQuery = usersQuery.where("role", "==", role);
     }
-    
+
     const usersSnapshot = await usersQuery.get();
     const users = [];
 
@@ -307,7 +316,10 @@ const deleteSubadmin = async (req, res) => {
     }
 
     const userData = userDoc.data();
-    console.log("Found user data:", { uid: userData.uid, email: userData.email });
+    console.log("Found user data:", {
+      uid: userData.uid,
+      email: userData.email,
+    });
 
     // Delete from Firebase Auth using the uid from Firestore
     try {
@@ -332,7 +344,7 @@ const deleteSubadmin = async (req, res) => {
     console.error("Error details:", {
       code: error.code,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     res.status(500).json({
       success: false,
@@ -395,4 +407,4 @@ module.exports = {
   deleteSubadmin,
   resetSubadminPassword,
   sendSubadminCredentials,
-}; 
+};
