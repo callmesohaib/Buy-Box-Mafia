@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Mail, Phone, Calendar, Shield, Edit, Trash2, UserCheck, UserX, RefreshCw } from "lucide-react"
+import { Mail, Phone, Calendar, Shield, Edit, Trash2, UserCheck, UserX, RefreshCw, Users, Filter } from "lucide-react"
 import { buttonHover, staggerContainer, staggerItem } from "../../../animations/animation"
 import { useNavigate } from "react-router-dom"
 import { subadminService } from "../../../services/subadminService"
@@ -15,10 +15,12 @@ function getInitials(name) {
 }
 
 export default function SubadminsPanel() {
+    const [users, setUsers] = useState([]);
     const [subadmins, setSubadmins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const navigate = useNavigate();
+
     function formatDate(date) {
         if (!date) return 'Unknown';
 
@@ -63,15 +65,17 @@ export default function SubadminsPanel() {
         });
     }
 
-
     const fetchSubadmins = async () => {
         try {
             setLoading(true);
             setError("");
             const response = await subadminService.getAllSubadmins();
             if (response.success) {
-                console.log('Subadmins data:', response.data);
-                setSubadmins(response.data);
+                console.log('Users data:', response.data);
+                setUsers(response.data);
+                // Filter to only show subadmins
+                const subadminUsers = response.data.filter(user => user.role === 'subadmin');
+                setSubadmins(subadminUsers);
             } else {
                 setError(response.message || "Failed to fetch subadmins");
             }
@@ -132,8 +136,9 @@ export default function SubadminsPanel() {
 
     return (
         <>
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-6">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold text-white">Subadmin Management</h2>
                     {error && (
                         <div className="text-red-400 text-sm bg-red-500/10 px-3 py-1 rounded-lg border border-red-500/20">
                             {error}
@@ -158,6 +163,38 @@ export default function SubadminsPanel() {
                     </button>
                 </div>
             </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-400 text-sm">Total Subadmins</p>
+                            <p className="text-2xl font-bold text-blue-400">{subadmins.length}</p>
+                        </div>
+                        <Shield className="text-blue-400" size={24} />
+                    </div>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-400 text-sm">Active Subadmins</p>
+                            <p className="text-2xl font-bold text-green-400">{subadmins.filter(u => u.status === 'active' || !u.status).length}</p>
+                        </div>
+                        <UserCheck className="text-green-400" size={24} />
+                    </div>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-400 text-sm">Inactive Subadmins</p>
+                            <p className="text-2xl font-bold text-red-400">{subadmins.filter(u => u.status === 'inactive').length}</p>
+                        </div>
+                        <UserX className="text-red-400" size={24} />
+                    </div>
+                </div>
+            </div>
+
             {subadmins.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
@@ -189,13 +226,24 @@ export default function SubadminsPanel() {
                             <div className="flex items-center gap-4 mb-2">
                                 <div className="w-12 h-12 rounded-full bg-gray-700 text-white flex items-center justify-center font-bold text-lg shadow-inner border border-gray-600">
                                     {getInitials(subadmin.name)}
-                                </div>                                <div className="flex-1">
+                                </div>
+                                <div className="flex-1">
                                     <h3 className="font-semibold text-white text-lg leading-tight">{subadmin.name}</h3>
                                     <p className="text-xs text-gray-400 mt-0.5">{subadmin.location}</p>
                                 </div>
                             </div>
+                            
+                            {/* Role Badge */}
+                            <div className="flex items-center gap-2">
+                                <Shield size={16} className="text-blue-400" />
+                                <span className="text-sm font-semibold text-blue-400">
+                                    Subadmin
+                                </span>
+                            </div>
+
                             {/* Divider */}
                             <div className="border-t border-gray-700 my-2" />
+                            
                             {/* Contact Info */}
                             <div className="flex flex-col gap-2 mb-2">
                                 <div className="flex items-center gap-2 text-sm text-gray-300">
@@ -210,12 +258,12 @@ export default function SubadminsPanel() {
                                     <Calendar size={16} className="text-gray-400" />
                                     <span>Joined: {formatDate(subadmin.createdAt)}</span>
                                 </div>
-
                                 <div className="flex items-center gap-2 text-sm text-gray-300">
-                                    <Shield size={16} className="text-blue-400" />
-                                    <span>Status: {subadmin.status || 'Inactive'}</span>
+                                    <UserCheck size={16} className="text-blue-400" />
+                                    <span>Status: {subadmin.status || 'Active'}</span>
                                 </div>
                             </div>
+                            
                             {/* Actions */}
                             <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
                                 <motion.button

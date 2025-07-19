@@ -1,149 +1,169 @@
 # Buy Box Mafia Backend
 
-## Subadmin Management System
+This is the backend server for the Buy Box Mafia application, providing API endpoints for user management, authentication, and other core functionalities.
 
-This backend provides comprehensive subadmin management functionality with email notifications.
+## Features
 
-### Features
+- **User Management**: Create, read, update, and delete users with different roles (admin, subadmin, scout)
+- **Authentication**: Firebase-based authentication with role-based access control
+- **Email Notifications**: Automatic email sending for new user credentials
+- **Role-based Access**: Different permissions for admin, subadmin, and scout users
 
-- ✅ Create subadmin accounts with automatic password generation
-- ✅ Send welcome emails with login credentials
-- ✅ Manage subadmin permissions and roles
-- ✅ Reset subadmin passwords
-- ✅ Full CRUD operations for subadmin management
-- ✅ Firebase Authentication integration
-- ✅ Firestore database storage
+## User Roles
 
-### Setup Instructions
+1. **Admin**: Full system access, can manage all users and system settings
+2. **Subadmin**: Can manage buyers and deals, limited system access
+3. **Scout**: Basic user access for property scouting and deal submission
 
-#### 1. Environment Variables
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Configuration
 
 Create a `.env` file in the backend directory with the following variables:
 
 ```env
-# Server Configuration
-PORT=3001
-
 # Firebase Configuration
-FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY_ID=your-private-key-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour private key here\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=your-service-account-email
+FIREBASE_CLIENT_ID=your-client-id
+FIREBASE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
+FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
+FIREBASE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+FIREBASE_CLIENT_X509_CERT_URL=your-cert-url
 
-# Email Configuration (for nodemailer)
+# Email Configuration (for sending user credentials)
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
 
-# Frontend URL (for email links)
-FRONTEND_URL=http://localhost:5173
+# Server Configuration
+PORT=3001
+NODE_ENV=development
 ```
 
-#### 2. Email Setup (Gmail)
+### 3. Firebase Setup
 
-To use Gmail for sending emails:
+1. Download your Firebase service account key JSON file
+2. Place it in the backend directory as `buybox-mafia-firebase-adminsdk-fbsvc-38d0d0b172.json`
+3. Update the Firebase configuration in `utils/firebase.js` if needed
 
-1. Enable 2-Factor Authentication on your Gmail account
+### 4. Email Setup (Gmail)
+
+To enable email functionality for sending user credentials:
+
+1. Enable 2-factor authentication on your Gmail account
 2. Generate an App Password:
    - Go to Google Account settings
    - Security → 2-Step Verification → App passwords
    - Generate a new app password for "Mail"
-3. Use this app password in your `EMAIL_PASSWORD` environment variable
+3. Use this app password in your `.env` file as `EMAIL_PASSWORD`
 
-#### 3. Firebase Setup
+### 5. Setup Admin User
 
-Ensure your Firebase project has:
+Run the admin setup script to create your first admin user:
 
-1. **Authentication** enabled
-2. **Firestore Database** enabled
-3. **Service Account** key file in the backend directory
-4. **Custom Claims** support for role-based access
-
-### API Endpoints
-
-#### Subadmin Management
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/subadmin/add` | Create new subadmin | Admin |
-| GET | `/api/subadmin/all` | Get all subadmins | Admin |
-| GET | `/api/subadmin/:id` | Get subadmin by ID | Admin |
-| PUT | `/api/subadmin/:id` | Update subadmin | Admin |
-| DELETE | `/api/subadmin/:id` | Delete subadmin | Admin |
-| POST | `/api/subadmin/:id/reset-password` | Reset password | Admin |
-
-#### Request Examples
-
-**Create Subadmin:**
-```json
-POST /api/subadmin/add
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "phone": "+1234567890",
-  "role": "subadmin",
-  "permissions": ["read", "write", "delete"]
-}
+```bash
+node setup-admin.js your-email@example.com
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Subadmin created successfully",
-  "data": {
-    "uid": "firebase-user-id",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "emailSent": true
-  }
-}
+This will:
+- Set the user as admin in Firebase Auth
+- Create the user in the Firestore "users" collection
+- Set appropriate permissions
+
+### 6. Start the Server
+
+```bash
+npm start
 ```
 
-### Firebase Configuration
+The server will start on port 3001 (or the port specified in your .env file).
 
-#### 1. Authentication Rules
+## API Endpoints
 
-Ensure your Firebase Authentication allows:
-- User creation with custom claims
-- Role-based access control
+### Authentication
+- `POST /api/auth/login` - User login
 
-#### 2. Firestore Collections
+### User Management
+- `POST /api/subadmin/add` - Create new user (subadmin/scout)
+- `GET /api/subadmin/all` - Get all users (with optional role filter)
+- `GET /api/subadmin/:id` - Get user by ID
+- `PUT /api/subadmin/:id` - Update user
+- `DELETE /api/subadmin/:id` - Delete user
+- `POST /api/subadmin/:id/reset-password` - Reset user password
 
-The system uses the following Firestore collection:
-- `subadmins` - Stores subadmin profile data
+## User Management Flow
 
-#### 3. Custom Claims
+1. **Admin creates users**: Admin can create subadmin or scout users
+2. **Email notification**: New users receive email with login credentials
+3. **User login**: Users can log in with their email and password
+4. **Role-based access**: Different features available based on user role
 
-Subadmins are created with custom claims:
+## Database Structure
+
+### Users Collection
 ```javascript
 {
-  role: "subadmin",
-  permissions: ["read", "write"]
+  uid: "firebase-auth-uid",
+  name: "User Name",
+  email: "user@example.com",
+  phone: "+1234567890",
+  location: "New York, NY",
+  role: "admin|subadmin|scout",
+  permissions: ["read", "write", "admin"],
+  status: "active|inactive",
+  createdAt: "timestamp",
+  createdBy: "admin-uid",
+  updatedAt: "timestamp"
 }
 ```
 
-### Security Features
+## Security Features
 
-- ✅ Password hashing with bcrypt
-- ✅ JWT token verification
-- ✅ Role-based access control
-- ✅ Input validation
-- ✅ Secure email transmission
-- ✅ Firebase security rules integration
+- Firebase Authentication for secure user management
+- Role-based access control
+- Password hashing with bcrypt
+- Secure email transmission
+- Input validation and sanitization
 
-### Error Handling
+## Development
 
-The API includes comprehensive error handling for:
-- Invalid input data
-- Firebase authentication errors
-- Email sending failures
-- Database operation errors
-- Authorization failures
+### Running in Development Mode
 
-### Email Templates
+```bash
+npm run dev
+```
 
-The system sends professionally formatted HTML emails with:
-- Buy Box Mafia branding
-- Login credentials
-- Security reminders
-- Direct links to admin dashboard 
+### Testing
+
+```bash
+node test-subadmin.js
+```
+
+## Troubleshooting
+
+### Email Issues
+- Ensure Gmail app password is correctly set
+- Check that 2-factor authentication is enabled
+- Verify email credentials in .env file
+
+### Firebase Issues
+- Verify service account key is properly configured
+- Check Firebase project ID matches your project
+- Ensure Firestore rules allow read/write access
+
+### User Creation Issues
+- Check if user already exists in Firebase Auth
+- Verify all required fields are provided
+- Check Firestore permissions
+
+## Support
+
+For issues or questions, please check the Firebase console logs and server console output for detailed error messages. 

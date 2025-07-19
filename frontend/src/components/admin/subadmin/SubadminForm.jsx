@@ -44,6 +44,7 @@ export default function SubadminForm({ onClose }) {
       setLoading(false)
     }
   }
+
   return (
     <motion.div
       className="max-w-xl w-full mx-auto bg-gray-800 rounded-xl shadow-lg p-4 md:p-8 mt-4 md:mt-8 border border-gray-700"
@@ -55,7 +56,7 @@ export default function SubadminForm({ onClose }) {
         onClick={() => (onClose ? onClose() : navigate(-1))}
         className="mb-6 text-amber-400 hover:text-amber-300 transition-colors"
       >
-        ← Back to Subadmins
+        ← Back to Users
       </button>
       <h2 className="text-2xl font-bold mb-6 text-white">Add New Subadmin</h2>
       

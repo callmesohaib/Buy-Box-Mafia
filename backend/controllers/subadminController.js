@@ -23,36 +23,37 @@ const generatePassword = () => {
 };
 
 // Send email with credentials
-const sendSubadminCredentials = async (email, password, name) => {
+const sendSubadminCredentials = async (email, password, name, role) => {
+  const roleDisplayName = role === ROLES.SUBADMIN ? 'Subadmin' : 
+                         role === ROLES.SCOUT ? 'Scout' : 'Admin';
+  
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Welcome to Buy Box Mafia - Your Subadmin Account",
+    subject: `Welcome to Buy Box Mafia - Your ${roleDisplayName} Account`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #d72638, #ff1744); color: white; padding: 20px; text-align: center;">
           <h1 style="margin: 0;">Buy Box Mafia</h1>
-          <p style="margin: 10px 0 0 0;">Subadmin Account Created</p>
+          <p style="margin: 10px 0 0 0;">${roleDisplayName} Account Created</p>
         </div>
         
         <div style="padding: 30px; background: #f9f9f9;">
           <h2 style="color: #333;">Welcome, ${name}!</h2>
           <p style="color: #666; line-height: 1.6;">
-            Your subadmin account has been successfully created. Below are your login credentials:
+            Your ${roleDisplayName.toLowerCase()} account has been successfully created. Below are your login credentials:
           </p>
           
           <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d72638;">
             <h3 style="margin: 0 0 15px 0; color: #333;">Login Credentials</h3>
             <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
             <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
+            <p style="margin: 5px 0;"><strong>Role:</strong> ${roleDisplayName}</p>
           </div>
           
-
-          
           <p style="color: #666; margin-top: 30px;">
-            You can now access the subadmin dashboard and manage your assigned responsibilities.
+            You can now access the dashboard and manage your assigned responsibilities.
           </p>
-        
         </div>
         
         <div style="background: #333; color: white; padding: 20px; text-align: center;">
@@ -71,26 +72,43 @@ const sendSubadminCredentials = async (email, password, name) => {
   }
 };
 
-// Add new subadmin
+// Add new user (subadmin or scout)
 const addSubadmin = async (req, res) => {
   try {
     const { name, email, phone, location, role, permissions } = req.body;
 
     // Validate required fields
-    if (!name || !email || !phone || !location) {
+    if (!name || !email || !phone || !location || !role) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, phone, and location are required fields",
+        message: "Name, email, phone, location, and role are required fields",
       });
     }
 
-    // Check if subadmin already exists
+    // Validate role
+    if (!Object.values(ROLES).includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role. Must be admin, subadmin, or scout",
+      });
+    }
+
+    // Check if user already exists in Firestore
+    const existingUserQuery = await db.collection("users").where("email", "==", email).get();
+    if (!existingUserQuery.empty) {
+      return res.status(400).json({
+        success: false,
+        message: "A user with this email already exists",
+      });
+    }
+
+    // Check if user exists in Firebase Auth
     try {
-      const existingUser = await admin.auth().getUserByEmail(email);
-      if (existingUser) {
+      const existingAuthUser = await admin.auth().getUserByEmail(email);
+      if (existingAuthUser) {
         return res.status(400).json({
           success: false,
-          message: "A user with this email already exists",
+          message: "A user with this email already exists in authentication",
         });
       }
     } catch (error) {
@@ -109,35 +127,34 @@ const addSubadmin = async (req, res) => {
       email: email,
       password: password,
       displayName: name,
-      // Remove phoneNumber as it might cause issues if not in proper format
     });
 
-    // Set custom claims for subadmin role
+    // Set custom claims for role
     await admin.auth().setCustomUserClaims(userRecord.uid, {
-      role: ROLES.SUBADMIN,
+      role: role,
       permissions: permissions || ["read", "write"],
     });
 
-    // Store additional data in Firestore
-    const subadminData = {
+    // Store user data in Firestore "users" collection
+    const userData = {
       uid: userRecord.uid,
       name: name,
       email: email,
       phone: phone,
       location: location,
-      role: role || ROLES.SUBADMIN,
+      role: role,
       permissions: permissions || ["read", "write"],
       status: "active",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: req.user?.uid || "admin", // Assuming you have user info in request
     };
 
-    await db.collection("subadmins").doc(userRecord.uid).set(subadminData);
+    await db.collection("users").doc(userRecord.uid).set(userData);
 
     // Send email with credentials
     let emailSent = false;
     try {
-      emailSent = await sendSubadminCredentials(email, password, name);
+      emailSent = await sendSubadminCredentials(email, password, name, role);
     } catch (emailError) {
       console.error("Email sending failed:", emailError);
       // Don't fail the entire request if email fails
@@ -145,16 +162,17 @@ const addSubadmin = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Subadmin created successfully",
+      message: `${role.charAt(0).toUpperCase() + role.slice(1)} created successfully`,
       data: {
         uid: userRecord.uid,
         name: name,
         email: email,
+        role: role,
         emailSent: emailSent,
       },
     });
   } catch (error) {
-    console.error("Error creating subadmin:", error);
+    console.error("Error creating user:", error);
     console.error("Error details:", {
       code: error.code,
       message: error.message,
@@ -162,20 +180,28 @@ const addSubadmin = async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: "Failed to create subadmin",
+      message: "Failed to create user",
       error: error.message,
     });
   }
 };
 
-// Get all subadmins
+// Get all users by role (subadmin, scout, or all)
 const getAllSubadmins = async (req, res) => {
   try {
-    const subadminsSnapshot = await db.collection("subadmins").get();
-    const subadmins = [];
+    const { role } = req.query;
+    let usersQuery = db.collection("users");
+    
+    // If role is specified, filter by role
+    if (role && Object.values(ROLES).includes(role)) {
+      usersQuery = usersQuery.where("role", "==", role);
+    }
+    
+    const usersSnapshot = await usersQuery.get();
+    const users = [];
 
-    subadminsSnapshot.forEach((doc) => {
-      subadmins.push({
+    usersSnapshot.forEach((doc) => {
+      users.push({
         id: doc.id,
         ...doc.data(),
       });
@@ -183,49 +209,49 @@ const getAllSubadmins = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: subadmins,
+      data: users,
     });
   } catch (error) {
-    console.error("Error fetching subadmins:", error);
+    console.error("Error fetching users:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch subadmins",
+      message: "Failed to fetch users",
       error: error.message,
     });
   }
 };
 
-// Get subadmin by ID
+// Get user by ID
 const getSubadminById = async (req, res) => {
   try {
     const { id } = req.params;
-    const subadminDoc = await db.collection("subadmins").doc(id).get();
+    const userDoc = await db.collection("users").doc(id).get();
 
-    if (!subadminDoc.exists) {
+    if (!userDoc.exists) {
       return res.status(404).json({
         success: false,
-        message: "Subadmin not found",
+        message: "User not found",
       });
     }
 
     res.status(200).json({
       success: true,
       data: {
-        id: subadminDoc.id,
-        ...subadminDoc.data(),
+        id: userDoc.id,
+        ...userDoc.data(),
       },
     });
   } catch (error) {
-    console.error("Error fetching subadmin:", error);
+    console.error("Error fetching user:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch subadmin",
+      message: "Failed to fetch user",
       error: error.message,
     });
   }
 };
 
-// Update subadmin
+// Update user
 const updateSubadmin = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,43 +267,51 @@ const updateSubadmin = async (req, res) => {
 
     updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
-    await db.collection("subadmins").doc(id).update(updateData);
+    await db.collection("users").doc(id).update(updateData);
+
+    // Update custom claims in Firebase Auth if role changed
+    if (role) {
+      await admin.auth().setCustomUserClaims(id, {
+        role: role,
+        permissions: permissions || ["read", "write"],
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: "Subadmin updated successfully",
+      message: "User updated successfully",
     });
   } catch (error) {
-    console.error("Error updating subadmin:", error);
+    console.error("Error updating user:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update subadmin",
+      message: "Failed to update user",
       error: error.message,
     });
   }
 };
 
-// Delete subadmin
+// Delete user
 const deleteSubadmin = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Attempting to delete subadmin with ID:", id);
+    console.log("Attempting to delete user with ID:", id);
 
-    // First, check if the subadmin exists in Firestore
-    const subadminDoc = await db.collection("subadmins").doc(id).get();
-    if (!subadminDoc.exists) {
+    // First, check if the user exists in Firestore
+    const userDoc = await db.collection("users").doc(id).get();
+    if (!userDoc.exists) {
       return res.status(404).json({
         success: false,
-        message: "Subadmin not found",
+        message: "User not found",
       });
     }
 
-    const subadminData = subadminDoc.data();
-    console.log("Found subadmin data:", { uid: subadminData.uid, email: subadminData.email });
+    const userData = userDoc.data();
+    console.log("Found user data:", { uid: userData.uid, email: userData.email });
 
     // Delete from Firebase Auth using the uid from Firestore
     try {
-      await admin.auth().deleteUser(subadminData.uid);
+      await admin.auth().deleteUser(userData.uid);
       console.log("Successfully deleted user from Firebase Auth");
     } catch (authError) {
       console.error("Error deleting from Firebase Auth:", authError);
@@ -286,15 +320,15 @@ const deleteSubadmin = async (req, res) => {
     }
 
     // Delete from Firestore
-    await db.collection("subadmins").doc(id).delete();
-    console.log("Successfully deleted subadmin from Firestore");
+    await db.collection("users").doc(id).delete();
+    console.log("Successfully deleted user from Firestore");
 
     res.status(200).json({
       success: true,
-      message: "Subadmin deleted successfully",
+      message: "User deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting subadmin:", error);
+    console.error("Error deleting user:", error);
     console.error("Error details:", {
       code: error.code,
       message: error.message,
@@ -302,13 +336,13 @@ const deleteSubadmin = async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: "Failed to delete subadmin",
+      message: "Failed to delete user",
       error: error.message,
     });
   }
 };
 
-// Reset subadmin password
+// Reset user password
 const resetSubadminPassword = async (req, res) => {
   try {
     const { id } = req.params;
@@ -319,20 +353,21 @@ const resetSubadminPassword = async (req, res) => {
       password: password,
     });
 
-    // Get subadmin data to send email
-    const subadminDoc = await db.collection("subadmins").doc(id).get();
-    if (!subadminDoc.exists) {
+    // Get user data to send email
+    const userDoc = await db.collection("users").doc(id).get();
+    if (!userDoc.exists) {
       return res.status(404).json({
         success: false,
-        message: "Subadmin not found",
+        message: "User not found",
       });
     }
 
-    const subadminData = subadminDoc.data();
+    const userData = userDoc.data();
     const emailSent = await sendSubadminCredentials(
-      subadminData.email,
+      userData.email,
       password,
-      subadminData.name
+      userData.name,
+      userData.role
     );
 
     res.status(200).json({
