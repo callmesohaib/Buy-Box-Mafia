@@ -75,7 +75,6 @@ export const subadminService = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
         },
       });
 
@@ -98,7 +97,6 @@ export const subadminService = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify(updateData),
       });

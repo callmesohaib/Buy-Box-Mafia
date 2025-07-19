@@ -1,11 +1,13 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { scaleIn } from "../../../animations/animation"
 import { subadminService } from "../../../services/subadminService"
 
 export default function SubadminForm({ onClose }) {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const location = useLocation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [form, setForm] = useState({
@@ -16,6 +18,25 @@ export default function SubadminForm({ onClose }) {
     role: "subadmin",
     permissions: ["read", "write"]
   })
+  
+  const isEditMode = !!id
+
+  // Load subadmin data when in edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      const subadminData = location.state?.subadminData
+      if (subadminData) {
+        setForm({
+          name: subadminData.name || "",
+          email: subadminData.email || "",
+          phone: subadminData.phone || "",
+          location: subadminData.location || "",
+          role: subadminData.role || "subadmin",
+          permissions: subadminData.permissions || ["read", "write"]
+        })
+      }
+    }
+  }, [isEditMode, location.state])
 
   const handleChange = e => {
     const { name, value } = e.target
@@ -28,18 +49,42 @@ export default function SubadminForm({ onClose }) {
     setError("")
 
     try {
-      const response = await subadminService.createSubadmin(form)
+      let response
       
-      if (response.success) {
-        alert(`Subadmin created successfully! Email sent to ${form.email}`)
-        if (onClose) onClose()
-        else navigate(-1)
+      if (isEditMode) {
+        // Update existing subadmin (excluding password)
+        const updateData = {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          location: form.location,
+          role: form.role,
+          permissions: form.permissions
+        }
+        response = await subadminService.updateSubadmin(id, updateData)
+        
+        if (response.success) {
+          alert("Subadmin updated successfully!")
+          if (onClose) onClose()
+          else navigate(-1)
+        } else {
+          setError(response.message || "Failed to update subadmin")
+        }
       } else {
-        setError(response.message || "Failed to create subadmin")
+        // Create new subadmin
+        response = await subadminService.createSubadmin(form)
+        
+        if (response.success) {
+          alert(`Subadmin created successfully! Email sent to ${form.email}`)
+          if (onClose) onClose()
+          else navigate(-1)
+        } else {
+          setError(response.message || "Failed to create subadmin")
+        }
       }
     } catch (error) {
-      console.error("Error creating subadmin:", error)
-      setError(error.message || "Failed to create subadmin")
+      console.error(isEditMode ? "Error updating subadmin:" : "Error creating subadmin:", error)
+      setError(error.message || (isEditMode ? "Failed to update subadmin" : "Failed to create subadmin"))
     } finally {
       setLoading(false)
     }
@@ -58,7 +103,9 @@ export default function SubadminForm({ onClose }) {
       >
         ← Back to Users
       </button>
-      <h2 className="text-2xl font-bold mb-6 text-white">Add New Subadmin</h2>
+      <h2 className="text-2xl font-bold mb-6 text-white">
+        {isEditMode ? "Edit Subadmin" : "Add New Subadmin"}
+      </h2>
       
       {error && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
@@ -126,10 +173,10 @@ export default function SubadminForm({ onClose }) {
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Creating...
+                {isEditMode ? "Updating..." : "Creating..."}
               </>
             ) : (
-              "Add Subadmin"
+              isEditMode ? "Save Changes" : "Add Subadmin"
             )}
           </button>
         </div>

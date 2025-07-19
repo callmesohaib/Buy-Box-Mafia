@@ -23,6 +23,7 @@ export default function AdminRoutes({ analyticsData, deals, buyers }) {
                 <Route path="buyer/new_buyer" element={<BuyerForm />} />
                 <Route path="subadmin" element={<SubadminsPanel  />} />
                 <Route path="subadmin/new_subadmin" element={<SubadminForm />} />
+                <Route path="subadmin/edit/:id" element={<SubadminForm />} />
             </Route>
         </Routes>
     )

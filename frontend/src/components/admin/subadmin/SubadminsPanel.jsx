@@ -107,20 +107,10 @@ export default function SubadminsPanel() {
         }
     };
 
-    const handleResetPassword = async (id, name) => {
-        if (window.confirm(`Reset password for ${name}? A new password will be sent to their email.`)) {
-            try {
-                const response = await subadminService.resetPassword(id);
-                if (response.success) {
-                    alert("Password reset successfully! Check their email for new credentials.");
-                } else {
-                    alert(response.message || "Failed to reset password");
-                }
-            } catch (error) {
-                console.error("Error resetting password:", error);
-                alert(error.message || "Failed to reset password");
-            }
-        }
+    const handleEdit = (subadmin) => {
+        navigate(`/admin/subadmin/edit/${subadmin.uid}`, { 
+            state: { subadminData: subadmin } 
+        });
     };
 
     if (loading) {
@@ -270,12 +260,12 @@ export default function SubadminsPanel() {
                                     variants={buttonHover}
                                     whileHover="whileHover"
                                     whileTap="whileTap"
-                                    onClick={() => handleResetPassword(subadmin.uid, subadmin.name)}
+                                    onClick={() => handleEdit(subadmin)}
                                     className="flex-1 px-3 py-2 border border-blue-400 text-blue-400 text-sm rounded-lg hover:bg-blue-600/10 transition-colors flex items-center justify-center gap-1 font-semibold"
-                                    title="Reset Password"
+                                    title="Edit Subadmin"
                                 >
-                                    <Shield size={16} />
-                                    <span className="hidden sm:inline">Reset</span>
+                                    <Edit size={16} />
+                                    <span className="hidden sm:inline">Edit</span>
                                 </motion.button>
                                 <motion.button
                                     variants={buttonHover}
