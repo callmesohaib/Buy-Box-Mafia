@@ -4,6 +4,8 @@ const cors = require("cors");
 const path = require("path");
 const authRoutes = require("./routers/authroutes");
 const subadminRoutes = require("./routers/subadminRoutes");
+const buyerRoutes = require("./routers/buyerRoutes");
+const userRoutes = require("./routers/userRoutes");
 const { admin } = require("./utils/firebase");
 
 // Initialize Firebase
@@ -26,9 +28,8 @@ app.use(cors(corOptions));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/subadmin", subadminRoutes);
-app.use("/", (req, res) => {
-  res.send("Server is running!");
-});
+app.use("/api/buyers", buyerRoutes);
+app.use("/api/users", userRoutes);
 
 // Serve static files (if needed)
 app.use(express.static(path.join(__dirname, "public")));

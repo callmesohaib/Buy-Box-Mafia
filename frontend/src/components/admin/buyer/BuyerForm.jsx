@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { fadeInUp, scaleIn } from "../../../animations/animation"
 import { Check } from "lucide-react"
@@ -13,6 +13,8 @@ const steps = [
 
 export default function BuyerForm({ onClose }) {
   const navigate = useNavigate()
+  const { id } = useParams();
+  const location = useLocation();
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: "",
@@ -31,6 +33,30 @@ export default function BuyerForm({ onClose }) {
     budgetMax: "",
     timeline: ""
   })
+  const [loading, setLoading] = useState(false);
+  const isEdit = Boolean(id);
+
+  // Pre-populate form if editing
+  useEffect(() => {
+    if (isEdit) {
+      // Try to get buyer data from location.state first
+      const buyerData = location.state?.buyerData;
+      if (buyerData) {
+        setForm({ ...buyerData });
+      } else {
+        // Fetch from backend if not in state
+        setLoading(true);
+        fetch(`http://localhost:3001/api/buyers`)
+          .then(res => res.json())
+          .then(buyers => {
+            const found = buyers.find(b => b.id === id);
+            if (found) setForm({ ...found });
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      }
+    }
+  }, [isEdit, id, location.state]);
 
   const handleChange = e => {
     const { name, value } = e.target
@@ -45,13 +71,47 @@ export default function BuyerForm({ onClose }) {
     e && e.preventDefault()
     setStep(s => Math.max(s - 1, 0))
   }
-  const handleSubmit = e => {
-    e.preventDefault()
-    console.log(form)
-    alert("Buyer added! (Check console for data)")
-    if (onClose) onClose()
-    else navigate(-1)
-  }
+  const handleSubmit = async e => {
+    e.preventDefault();
+    const submittedBy = localStorage.getItem('name') || 'Unknown';
+    const payload = { ...form, submittedBy };
+    try {
+      let response, data;
+      if (isEdit) {
+        response = await fetch(`http://localhost:3001/api/buyers/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        data = await response.json();
+        if (data.success) {
+          alert("Buyer updated!");
+          if (onClose) onClose();
+          else navigate(-1);
+        } else {
+          alert(data.message || "Failed to update buyer");
+        }
+      } else {
+        response = await fetch("http://localhost:3001/api/buyers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        data = await response.json();
+        if (data.success) {
+          alert("Buyer added!");
+          if (onClose) onClose();
+          else navigate(-1);
+        } else {
+          alert(data.message || "Failed to add buyer");
+        }
+      }
+    } catch (err) {
+      alert(isEdit ? "Error updating buyer" : "Error adding buyer");
+    }
+  };
+
+  if (loading) return <div className="text-center text-gray-300 py-12">Loading...</div>;
 
   return (
     <motion.div
@@ -66,7 +126,7 @@ export default function BuyerForm({ onClose }) {
       >
         ← Back to Buyers
       </button>
-      <h2 className="text-2xl font-bold mb-6 text-white">Add New Buyer</h2>
+      <h2 className="text-2xl font-bold mb-6 text-white">{isEdit ? "Edit Buyer" : "Add New Buyer"}</h2>
       {/* Stepper */}
       {/* Mobile Stepper: Progress bar and label */}
       <div className="md:hidden mb-8">
@@ -212,7 +272,7 @@ export default function BuyerForm({ onClose }) {
           {step < steps.length - 1 ? (
             <button type="button" onClick={handleNext} className="w-full md:w-auto ml-auto px-6 py-2 rounded-lg bg-[var(--mafia-red)] text-white font-semibold hover:bg-[var(--mafia-red-hover)] transition-colors">Next</button>
           ) : (
-            <button type="submit" className="w-full md:w-auto ml-auto px-6 py-2 rounded-lg bg-[var(--mafia-red)] text-white font-semibold hover:bg-[var(--mafia-red-hover)] transition-colors">Add Buyer</button>
+            <button type="submit" className="w-full md:w-auto ml-auto px-6 py-2 rounded-lg bg-[var(--mafia-red)] text-white font-semibold hover:bg-[var(--mafia-red-hover)] transition-colors">{isEdit ? "Save Changes" : "Add Buyer"}</button>
           )}
         </div>
       </form>

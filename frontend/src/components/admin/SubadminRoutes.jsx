@@ -10,6 +10,7 @@ export default function SubadminRoutes() {
             <Route element={<AdminDashboard />}>
                 <Route path="buyer" element={<BuyersPanel />} />
                 <Route path="buyer/new_buyer" element={<BuyerForm />} />
+                <Route path="buyer/edit/:id" element={<BuyerForm />} />
                 <Route path="*" element={<NotFound />} />
             </Route>
         </Routes>

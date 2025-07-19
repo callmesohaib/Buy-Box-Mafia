@@ -76,6 +76,17 @@ export default function Login() {
             // Store login state
             localStorage.setItem('isLoggedIn', 'true');
             localStorage.setItem('role', role);
+
+            // Fetch user profile and store name/email
+            try {
+              const userProfileRes = await fetch(`http://localhost:3001/api/users/by-email/${formData.email}`);
+              if (userProfileRes.ok) {
+                const { user } = await userProfileRes.json();
+                localStorage.setItem('name', user.name);
+                localStorage.setItem('email', user.email);
+                if (user.id) localStorage.setItem('subadminId', user.id);
+              }
+            } catch (e) { /* ignore profile fetch errors for now */ }
             
             // Redirect based on role
             redirectBasedOnRole(role);

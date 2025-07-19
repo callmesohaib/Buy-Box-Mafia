@@ -20,20 +20,20 @@ import { handleLogout as logoutUtil } from '../../utils/logout'
 function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
   const navigate = useNavigate()
   const userRole = localStorage.getItem('role')
-  
+
   // Memoize navItems to prevent recreation on every render
   const navItems = useMemo(() => {
-    return userRole === 'subadmin' 
+    return userRole === 'subadmin'
       ? [
-          { id: "buyers", label: "Buyers", icon: Users, path: "/subadmin/buyer" },
-        ]
+        { id: "buyers", label: "Buyers", icon: Users, path: "/subadmin/buyer" },
+      ]
       : [
-          { id: "overview", label: "Overview", icon: Home, path: "/admin" },
-          { id: "deals", label: "Deals", icon: FileText, path: "/admin/deals" },
-          { id: "buyers", label: "Buyers", icon: Users, path: "/admin/buyer" },
-          { id: "subadmins", label: "Subadmins", icon: Shield, path: "/admin/subadmin" },
-          { id: "analytics", label: "Analytics", icon: BarChart3, path: "/admin/analytics" },
-        ]
+        { id: "overview", label: "Overview", icon: Home, path: "/admin" },
+        { id: "deals", label: "Deals", icon: FileText, path: "/admin/deals" },
+        { id: "buyers", label: "Buyers", icon: Users, path: "/admin/buyer" },
+        { id: "subadmins", label: "Subadmins", icon: Shield, path: "/admin/subadmin" },
+        { id: "analytics", label: "Analytics", icon: BarChart3, path: "/admin/analytics" },
+      ]
   }, [userRole])
 
   // Memoize handleLogout to prevent recreation on every render
@@ -41,6 +41,9 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
     logoutUtil(navigate);
     toast.success('Successfully logged out.');
   }, [navigate])
+
+  const userName = localStorage.getItem('name') || (userRole === 'subadmin' ? 'Subadmin User' : 'Admin User');
+  const userEmail = localStorage.getItem('email') || (userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com');
 
   return (
     <>
@@ -114,8 +117,8 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
               <span className="text-xs font-medium text-gray-300">A</span>
             </div>
             <div>
-              <p className="text-xs font-medium text-white">{userRole === 'subadmin' ? 'Subadmin User' : 'Admin User'}</p>
-              <p className="text-xs text-gray-400">{userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com'}</p>
+              <p className="text-xs font-medium text-white">{userName}</p>
+              <p className="text-xs text-gray-400">{userEmail}</p>
             </div>
           </div>
 
@@ -211,8 +214,8 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
                     <span className="text-xs font-medium text-gray-300">A</span>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-white">{userRole === 'subadmin' ? 'Subadmin User' : 'Admin User'}</p>
-                    <p className="text-xs text-gray-400">{userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com'}</p>
+                    <p className="text-xs font-medium text-white">{userName}</p>
+                    <p className="text-xs text-gray-400">{userEmail}</p>
                   </div>
                 </div>
 

@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import buyersData from '../../../data/buyers.json';
 import { buttonHover } from "../../../animations/animation";
 
 function getInitials(name) {
@@ -20,15 +19,63 @@ function getInitials(name) {
     .toUpperCase()
     .slice(0, 2);
 }
+function formatDate(date) {
+  if (!date) return 'Unknown';
+
+  // If it's already a formatted string like "Jul 19, 2025", return it as is
+  if (typeof date === 'string' && /^[A-Za-z]{3}\s\d{1,2},\s\d{4}$/.test(date)) {
+    return date;
+  }
+
+  let dateToFormat = date;
+
+  // If Firestore Timestamp (has toDate method)
+  if (date && typeof date.toDate === 'function') {
+    dateToFormat = date.toDate();
+  }
+  // If it's a Firestore Timestamp object with _seconds and _nanoseconds
+  else if (date && typeof date === 'object' && date._seconds !== undefined) {
+    dateToFormat = new Date(date._seconds * 1000);
+  }
+  // If it's already a Date object
+  else if (date instanceof Date) {
+    dateToFormat = date;
+  }
+  // If it's a timestamp number
+  else if (typeof date === 'number') {
+    dateToFormat = new Date(date);
+  }
+  // If it's a string, try to parse it
+  else if (typeof date === 'string') {
+    dateToFormat = new Date(date);
+  }
+
+  const d = new Date(dateToFormat);
+  if (isNaN(d.getTime())) {
+    console.log('Invalid date value:', date, 'type:', typeof date);
+    return 'Invalid Date';
+  }
+
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 export default function BuyersPanel() {
-  const [buyers, setBuyers] = useState(buyersData);
+  const [buyers, setBuyers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [expandedRow, setExpandedRow] = useState(null);
 
   const userRole = localStorage.getItem('role');
+
+  const fetchBuyers = async () => {
+    const response = await fetch("http://localhost:3001/api/buyers");
+    const data = await response.json();
+    setBuyers(data);
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -64,10 +111,36 @@ export default function BuyersPanel() {
 
   const navigate = useNavigate();
 
-  const toggleRowExpand = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  useEffect(() => {
+    fetchBuyers();
+  }, []);
+
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/buyers/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        alert("Buyer deleted successfully");
+        fetchBuyers();
+      } else {
+        alert("Failed to delete buyer");
+      }
+    } catch (error) {
+      console.error("Error deleting buyer:", error);
+      alert("Failed to delete buyer");
+    }
   };
 
+  const handleEdit = (buyer) => {
+    if (userRole === 'subadmin') {
+      navigate(`/subadmin/buyer/edit/${buyer.id}`, { state: { buyerData: buyer } });
+    } else if (userRole === 'admin') {
+      navigate(`/admin/buyer/edit/${buyer.id}`, { state: { buyerData: buyer } });
+    } else {
+      navigate(`/buyer/edit/${buyer.id}`, { state: { buyerData: buyer } });
+    }
+  };
   return (
     <div className="bg-gray-900 rounded-xl p-4 md:p-6">
       {/* Header and Controls */}
@@ -90,7 +163,7 @@ export default function BuyersPanel() {
               className="px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg font-semibold shadow hover:bg-[var(--mafia-red-hover)] transition-colors flex items-center justify-center gap-2"
             >
               <span>+</span>
-              <span>Add Buyer</span>
+              <span className="hidden md:inline">Add Buyer</span>
             </button>
             <button
               onClick={() => {/* TODO: Implement import functionality */ }}
@@ -116,19 +189,10 @@ export default function BuyersPanel() {
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Submitted By</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('totalDeals')}>
-                <div className="flex items-center gap-1">
-                  Deals
-                  {sortConfig.key === 'totalDeals' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                </div>
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('totalValue')}>
-                <div className="flex items-center gap-1">
-                  Value
-                  {sortConfig.key === 'totalValue' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                </div>
-              </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Joined</th>
+              {userRole === 'subadmin' && (
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -151,33 +215,37 @@ export default function BuyersPanel() {
 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-300">{buyer.submittedBy}</div>
+                  <div className="text-sm text-gray-300">{buyer.submittedBy || 'N/A'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex gap-4">
-                    <div className="text-center">
-                      <span className="block text-lg font-bold text-amber-400">{buyer.totalDeals}</span>
-                      <span className="text-xs text-gray-400">Total</span>
+                  <div className="text-sm text-gray-300">{buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
+                </td>
+                {userRole === 'subadmin' && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-2">
+                      <motion.button
+                        variants={buttonHover}
+                        whileHover="whileHover"
+                        whileTap="whileTap"
+                        className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors"
+                        title="Edit Buyer"
+                        onClick={() => handleEdit(buyer)}
+                      >
+                        <Edit size={18} />
+                      </motion.button>
+                      <motion.button
+                        variants={buttonHover}
+                        whileHover="whileHover"
+                        whileTap="whileTap"
+                        className="p-2 text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
+                        title="Delete Buyer"
+                        onClick={() => handleDelete(buyer.id)}
+                      >
+                        <Trash2 size={18} />
+                      </motion.button>
                     </div>
-                    <div className="text-center">
-                      <span className="block text-lg font-bold text-green-400">{buyer.closedDeals}</span>
-                      <span className="text-xs text-gray-400">Closed</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-lg font-semibold text-amber-400">{buyer.totalValue}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end gap-2">
-                    <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors" title="Edit Buyer">
-                      <Edit size={18} />
-                    </motion.button>
-                    <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="p-2 text-red-400 hover:bg-red-600/10 rounded-lg transition-colors" title="Delete Buyer">
-                      <Trash2 size={18} />
-                    </motion.button>
-                  </div>
-                </td>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -199,22 +267,23 @@ export default function BuyersPanel() {
             <div className="flex flex-col gap-1 text-xs text-gray-300">
               <div><span className="font-medium text-gray-400">Email:</span> {buyer.email}</div>
               <div><span className="font-medium text-gray-400">Phone:</span> {buyer.phone}</div>
-              <div><span className="font-medium text-gray-400">Submitted By:</span> {buyer.submittedBy}</div>
-              <div><span className="font-medium text-gray-400">Joined:</span> {new Date(buyer.joinDate).toLocaleDateString()}</div>
-              <div><span className="font-medium text-gray-400">Total Deals:</span> <span className="text-amber-400 font-bold">{buyer.totalDeals}</span></div>
-              <div><span className="font-medium text-gray-400">Closed:</span> <span className="text-green-400 font-bold">{buyer.closedDeals}</span></div>
-              <div><span className="font-medium text-gray-400">Total Value:</span> <span className="text-amber-400 font-semibold">{buyer.totalValue}</span></div>
+              <div><span className="font-medium text-gray-400">Submitted By:</span> {buyer.submittedBy || 'N/A'}</div>
+              <div><span className="font-medium text-gray-400">Joined:</span> {buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
             </div>
-            <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
-              <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-amber-400 text-amber-400 text-xs rounded-lg hover:bg-amber-400/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Edit Buyer">
-                <Edit size={15} />
-                Edit
-              </motion.button>
-              <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-red-400 text-red-400 text-xs rounded-lg hover:bg-red-600/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Delete Buyer">
-                <Trash2 size={15} />
-                Delete
-              </motion.button>
-            </div>
+            {userRole === 'subadmin' && (
+
+
+              <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
+                <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-amber-400 text-amber-400 text-xs rounded-lg hover:bg-amber-400/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Edit Buyer" onClick={() => handleEdit(buyer)}>
+                  <Edit size={15} />
+                  Edit
+                </motion.button>
+                <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-red-400 text-red-400 text-xs rounded-lg hover:bg-red-600/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Delete Buyer" onClick={() => handleDelete(buyer.id)}>
+                  <Trash2 size={15} />
+                  Delete
+                </motion.button>
+              </div>
+            )}
           </div>
         ))}
       </div>
