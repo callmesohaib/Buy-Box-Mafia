@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const authRoutes = require("./routers/authroutes");
+const subadminRoutes = require("./routers/subadminRoutes");
 const { admin } = require("./utils/firebase");
 
 // Initialize Firebase
@@ -23,7 +24,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors(corOptions));
 
 // Routes
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/subadmin", subadminRoutes);
 app.use("/", (req, res) => {
   res.send("Server is running!");
 });

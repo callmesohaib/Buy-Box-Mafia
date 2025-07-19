@@ -22,8 +22,8 @@ const authController = {
       const customClaims = userRecord.customClaims || {};
       
       // Determine role (default to 'scout' if no role specified)
-      const role = customClaims[ROLES.ADMIN] ? ROLES.ADMIN : 
-                  customClaims[ROLES.SUBADMIN] ? ROLES.SUBADMIN : 
+      const role = customClaims.role === ROLES.ADMIN ? ROLES.ADMIN : 
+                  customClaims.role === ROLES.SUBADMIN ? ROLES.SUBADMIN : 
                   ROLES.SCOUT;
 
       // 4. Create custom token with role information
