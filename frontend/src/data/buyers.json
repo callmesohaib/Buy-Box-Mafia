@@ -8,6 +8,7 @@
     "joinDate": "2022-03-15",
     "totalDeals": 12,
     "closedDeals": 9,
+    "status": "Active",
     "submittedBy": "Subadmin 2",
     "totalValue": "$1,200,000"
   },
@@ -20,6 +21,7 @@
     "joinDate": "2021-11-02",
     "totalDeals": 8,
     "closedDeals": 7,
+    "status": "Active",
     "submittedBy": "Subadmin 3",
     "totalValue": "$950,000"
   },
@@ -32,6 +34,7 @@
     "joinDate": "2023-01-20",
     "totalDeals": 5,
     "closedDeals": 3,
+    "status": "Active",
     "submittedBy": "Subadmin 1",
     "totalValue": "$600,000"
   }
