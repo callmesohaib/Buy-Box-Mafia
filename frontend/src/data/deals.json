@@ -1,0 +1,35 @@
+[
+  {
+    "id": "deal_001",
+    "dealId": "D-1001",
+    "propertyAddress": "1234 Oak Valley Drive, Austin, TX",
+    "offerPrice": "$125,000",
+    "earnestMoney": "$5,000",
+    "potentialBuyers": 3,
+    "scout": "Sarah Johnson",
+    "county": "Travis",
+    "status": "Pending"
+  },
+  {
+    "id": "deal_002",
+    "dealId": "D-1002",
+    "propertyAddress": "5678 Pine Ridge Road, Dallas, TX",
+    "offerPrice": "$132,000",
+    "earnestMoney": "$6,000",
+    "potentialBuyers": 2,
+    "scout": "Michael Chen",
+    "county": "Dallas",
+    "status": "Approved"
+  },
+  {
+    "id": "deal_003",
+    "dealId": "D-1003",
+    "propertyAddress": "9012 Cedar Lane, Houston, TX",
+    "offerPrice": "$118,000",
+    "earnestMoney": "$4,500",
+    "potentialBuyers": 1,
+    "scout": "Emily Rodriguez",
+    "county": "Harris",
+    "status": "Rejected"
+  }
+] 

@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
+
+:root {
+  --black: #000000;
+  --mafia-red: #d72638;
+  --mafia-red-hover: #c21f30;
+  --gold: #f7c844;
+  --grey: #2f2f2f;
+  --green: #1db954;
+  --off-white: #f2f2f2;
+  --mafia-red-strong: #ff1744; 
+  --primary-gray-bg: #111827;
+  --secondary-gray-bg: #1f2937;
+  --tertiary-gray-bg: #374151;
+  --quaternary-gray-bg: #4b5563;
+  --primary-gray-text: #d1d5db;
+  --secondary-gray-text: #9ca3af;
+  --placeholder-gray: #6b7280;
+  --input-bg-gray: #374151;
+  --from-bg: #0f172a;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
+button {
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 10px;
+  background: var(--secondary-gray-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d72638;
+  border-radius: 8px;
+  min-height: 40px;
+  border: 2px solid var(--mafia-red-hover);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d72938;
+}
+
+::-webkit-scrollbar-corner {
+  background: #d72938;
+}
+
+.buyer-table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(64, 64, 67) var(--black);
+}
