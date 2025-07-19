@@ -1,20 +1,20 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = "http://localhost:3001/api";
 
 // Get auth token from Firebase
 const getAuthToken = async () => {
   try {
-    const { auth } = await import('../firebase/client');
+    const { auth } = await import("../firebase/client");
     const user = auth.currentUser;
     if (user) {
       const token = await user.getIdToken();
-      console.log('Auth token retrieved successfully, length:', token.length);
+      console.log("Auth token retrieved successfully, length:", token.length);
       return token;
     }
-    console.log('No current user found');
-    return '';
+    console.log("No current user found");
+    return "";
   } catch (error) {
-    console.error('Error getting auth token:', error);
-    return '';
+    console.error("Error getting auth token:", error);
+    return "";
   }
 };
 
@@ -25,9 +25,9 @@ export const subadminService = {
     try {
       // Temporarily remove auth for testing
       const response = await fetch(`${API_BASE_URL}/subadmin/all`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -38,7 +38,7 @@ export const subadminService = {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error fetching subadmins:', error);
+      console.error("Error fetching subadmins:", error);
       throw error;
     }
   },
@@ -48,22 +48,22 @@ export const subadminService = {
     try {
       // Temporarily remove auth for testing
       const response = await fetch(`${API_BASE_URL}/subadmin/add`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(subadminData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create subadmin');
+        throw new Error(errorData.message || "Failed to create subadmin");
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error creating subadmin:', error);
+      console.error("Error creating subadmin:", error);
       throw error;
     }
   },
@@ -72,9 +72,9 @@ export const subadminService = {
   getSubadminById: async (id) => {
     try {
       const response = await fetch(`${API_BASE_URL}/subadmin/${id}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -85,7 +85,7 @@ export const subadminService = {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error fetching subadmin:', error);
+      console.error("Error fetching subadmin:", error);
       throw error;
     }
   },
@@ -94,22 +94,22 @@ export const subadminService = {
   updateSubadmin: async (id, updateData) => {
     try {
       const response = await fetch(`${API_BASE_URL}/subadmin/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update subadmin');
+        throw new Error(errorData.message || "Failed to update subadmin");
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error updating subadmin:', error);
+      console.error("Error updating subadmin:", error);
       throw error;
     }
   },
@@ -117,24 +117,24 @@ export const subadminService = {
   // Delete subadmin
   deleteSubadmin: async (id) => {
     try {
-      console.log('Deleting subadmin with ID:', id);
-      
+      console.log("Deleting subadmin with ID:", id);
+
       const response = await fetch(`${API_BASE_URL}/subadmin/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
-      console.log('Delete response status:', response.status);
+      console.log("Delete response status:", response.status);
 
       if (!response.ok) {
-        let errorMessage = 'Failed to delete subadmin';
+        let errorMessage = "Failed to delete subadmin";
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
+          console.error("Error parsing error response:", parseError);
         }
         throw new Error(errorMessage);
       }
@@ -142,7 +142,7 @@ export const subadminService = {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error deleting subadmin:', error);
+      console.error("Error deleting subadmin:", error);
       throw error;
     }
   },
@@ -150,24 +150,27 @@ export const subadminService = {
   // Reset subadmin password
   resetPassword: async (id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/subadmin/${id}/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/subadmin/${id}/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reset password');
+        throw new Error(errorData.message || "Failed to reset password");
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       throw error;
     }
   },
-}; 
+};

@@ -18,7 +18,7 @@ export default function SubadminForm({ onClose }) {
     role: "subadmin",
     permissions: ["read", "write"]
   })
-  
+
   const isEditMode = !!id
 
   // Load subadmin data when in edit mode
@@ -50,7 +50,7 @@ export default function SubadminForm({ onClose }) {
 
     try {
       let response
-      
+
       if (isEditMode) {
         // Update existing subadmin (excluding password)
         const updateData = {
@@ -62,7 +62,7 @@ export default function SubadminForm({ onClose }) {
           permissions: form.permissions
         }
         response = await subadminService.updateSubadmin(id, updateData)
-        
+
         if (response.success) {
           alert("Subadmin updated successfully!")
           if (onClose) onClose()
@@ -73,7 +73,7 @@ export default function SubadminForm({ onClose }) {
       } else {
         // Create new subadmin
         response = await subadminService.createSubadmin(form)
-        
+
         if (response.success) {
           alert(`Subadmin created successfully! Email sent to ${form.email}`)
           if (onClose) onClose()
@@ -106,67 +106,67 @@ export default function SubadminForm({ onClose }) {
       <h2 className="text-2xl font-bold mb-6 text-white">
         {isEditMode ? "Edit Subadmin" : "Add New Subadmin"}
       </h2>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           {error}
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-            <input 
-              name="name" 
-              value={form.name} 
-              onChange={handleChange} 
-              required 
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              required
               disabled={loading}
-              className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50" 
+              className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-              <input 
-                name="email" 
-                value={form.email} 
-                onChange={handleChange} 
-                type="email" 
-                required 
+              <input
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                type="email"
+                required
                 disabled={loading}
-                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50" 
+                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
-              <input 
-                name="phone" 
-                value={form.phone} 
-                onChange={handleChange} 
-                required 
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                required
                 disabled={loading}
-                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50" 
+                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
-              <input 
-                name="location" 
-                value={form.location} 
-                onChange={handleChange} 
-                required 
+              <input
+                name="location"
+                value={form.location}
+                onChange={handleChange}
+                required
                 disabled={loading}
                 placeholder="e.g., New York, NY"
-                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50" 
+                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
               />
             </div>
           </div>
         </div>
         <div className="flex justify-end mt-8">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="px-6 py-2 rounded-lg bg-[var(--mafia-red)] text-white font-semibold hover:bg-[var(--mafia-red-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
