@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  Crown,
   Eye,
   EyeOff,
   Mail,
   Lock,
-  AlertCircle,
   ArrowRight,
 } from "lucide-react";
 import { toast } from 'react-hot-toast';
@@ -175,11 +172,10 @@ export default function Login() {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`w-full pl-10 pr-4 py-3 bg-transparent border-0 border-b ${
-                  errors.email
+                className={`w-full pl-10 pr-4 py-3 bg-transparent border-0 border-b ${errors.email
                     ? "border-b-red-500"
                     : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+                  } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="your@email.com"
               />
             </div>
@@ -198,11 +194,10 @@ export default function Login() {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`w-full pl-10 pr-10 py-3 bg-transparent border-0 border-b ${
-                  errors.password
+                className={`w-full pl-10 pr-10 py-3 bg-transparent border-0 border-b ${errors.password
                     ? "border-b-red-500"
                     : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+                  } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="••••••••"
               />
               <button

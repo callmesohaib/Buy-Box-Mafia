@@ -58,7 +58,6 @@ export default function SubadminsPanel() {
 
         const d = new Date(dateToFormat);
         if (isNaN(d.getTime())) {
-            console.log('Invalid date value:', date, 'type:', typeof date);
             return 'Invalid Date';
         }
 
@@ -75,7 +74,6 @@ export default function SubadminsPanel() {
             setError("");
             const response = await subadminService.getAllSubadmins();
             if (response.success) {
-                console.log('Users data:', response.data);
                 setUsers(response.data);
                 // Filter to only show subadmins
                 const subadminUsers = response.data.filter(user => user.role === 'subadmin');
@@ -84,7 +82,6 @@ export default function SubadminsPanel() {
                 setError(response.message || "Failed to fetch subadmins");
             }
         } catch (error) {
-            console.error("Error fetching subadmins:", error);
             setError(error.message || "Failed to fetch subadmins");
         } finally {
             setLoading(false);
@@ -111,7 +108,6 @@ export default function SubadminsPanel() {
                     toast.error(response.message || "Failed to delete subadmin");
                 }
             } catch (error) {
-                console.error("Error deleting subadmin:", error);
                 toast.error(error.message || "Failed to delete subadmin");
             }
         }
