@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { fadeInUp, scaleIn } from "../../../animations/animation"
 import { Check } from "lucide-react"
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 
 const steps = [
   "Basic Info",
@@ -21,6 +21,8 @@ export default function BuyerForm({ onClose }) {
     name: "",
     email: "",
     phone: "",
+    city: "",
+    country: "",
     buyingLocations: "",
     lotSizeMin: "",
     lotSizeMax: "",
@@ -183,6 +185,16 @@ export default function BuyerForm({ onClose }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
                   <input name="phone" value={form.phone} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
+                  <input name="city" value={form.city} onChange={handleChange}  required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>
+                  <input name="country" value={form.country} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
                 </div>
               </div>
               <div>

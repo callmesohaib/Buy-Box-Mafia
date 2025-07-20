@@ -5,6 +5,8 @@ toFirestoreBuyer = (body) => ({
   name: body.name,
   email: body.email,
   phone: body.phone,
+  city: body.city,
+  country: body.country,
   buyingLocations: body.buyingLocations,
   lotSizeMin: body.lotSizeMin,
   lotSizeMax: body.lotSizeMax,

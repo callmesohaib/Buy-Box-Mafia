@@ -81,6 +81,10 @@ export default function BuyersPanel() {
     const data = await response.json();
     setBuyers(data);
     setLoading(false);
+    if(userRole === 'subadmin'){
+      setBuyers(data.filter(buyer => buyer.submittedBy === localStorage.getItem('name')));
+    }
+    
   };
 
   useEffect(() => {

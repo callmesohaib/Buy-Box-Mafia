@@ -153,7 +153,7 @@ const addSubadmin = async (req, res) => {
       role: role,
       status: "active",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: req.user?.uid || "admin", // Assuming you have user info in request
+      createdBy: req.user?.uid || "admin",
     };
 
     await db.collection("users").doc(userRecord.uid).set(userData);
@@ -277,6 +277,7 @@ const updateSubadmin = async (req, res) => {
     updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
     await db.collection("users").doc(id).update(updateData);
+
 
     // Update custom claims in Firebase Auth if role changed
     if (role) {

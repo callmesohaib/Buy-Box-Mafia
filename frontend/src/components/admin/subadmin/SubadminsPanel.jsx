@@ -4,6 +4,8 @@ import { Mail, Phone, Calendar, Shield, Edit, Trash2, UserCheck, UserX, RefreshC
 import { buttonHover, staggerContainer, staggerItem } from "../../../animations/animation"
 import { useNavigate } from "react-router-dom"
 import { subadminService } from "../../../services/subadminService"
+import toast from "react-hot-toast"
+import { Modal } from "antd";
 
 function getInitials(name) {
     return name
@@ -20,6 +22,8 @@ export default function SubadminsPanel() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const navigate = useNavigate();
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedSubadmin, setSelectedSubadmin] = useState(null);
 
     function formatDate(date) {
         if (!date) return 'Unknown';
@@ -91,20 +95,38 @@ export default function SubadminsPanel() {
         fetchSubadmins();
     }, []);
 
-    const handleDelete = async (id, name) => {
-        if (window.confirm(`Are you sure you want to delete ${name}?`)) {
+    const showDeleteModal = (subadmin) => {
+        setSelectedSubadmin(subadmin);
+        setIsModalVisible(true);
+    };
+
+    const handleModalOk = async () => {
+        if (selectedSubadmin) {
             try {
-                const response = await subadminService.deleteSubadmin(id);
+                const response = await subadminService.deleteSubadmin(selectedSubadmin.uid);
                 if (response.success) {
                     fetchSubadmins();
+                    toast.success("Subadmin deleted successfully");
                 } else {
-                    alert(response.message || "Failed to delete subadmin");
+                    toast.error(response.message || "Failed to delete subadmin");
                 }
             } catch (error) {
                 console.error("Error deleting subadmin:", error);
-                alert(error.message || "Failed to delete subadmin");
+                toast.error(error.message || "Failed to delete subadmin");
             }
         }
+        setIsModalVisible(false);
+        setSelectedSubadmin(null);
+    };
+
+    const handleModalCancel = () => {
+        setIsModalVisible(false);
+        setSelectedSubadmin(null);
+    };
+
+    const handleDelete = (uid, name) => {
+        const subadmin = subadmins.find(sa => sa.uid === uid);
+        showDeleteModal(subadmin);
     };
 
     const handleEdit = (subadmin) => {
@@ -283,6 +305,18 @@ export default function SubadminsPanel() {
                     ))}
                 </motion.div>
             )}
+            {/* Modal for delete confirmation */}
+            <Modal
+                title="Confirm Delete"
+                open={isModalVisible}
+                onOk={handleModalOk}
+                onCancel={handleModalCancel}
+                okText="Delete"
+                okButtonProps={{ danger: true }}
+                cancelText="Cancel"
+            >
+                <p>Are you sure you want to delete <b>{selectedSubadmin?.name}</b>?</p>
+            </Modal>
         </>
     )
 } 

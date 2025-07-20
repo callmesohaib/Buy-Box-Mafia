@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { motion } from "framer-motion"
 import { scaleIn } from "../../../animations/animation"
 import { subadminService } from "../../../services/subadminService"
+import toast from "react-hot-toast"
 
 export default function SubadminForm({ onClose }) {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ export default function SubadminForm({ onClose }) {
         response = await subadminService.updateSubadmin(id, updateData)
 
         if (response.success) {
-          alert("Subadmin updated successfully!")
+          toast.success("Subadmin updated successfully!")
           if (onClose) onClose()
           else navigate(-1)
         } else {
@@ -75,7 +76,7 @@ export default function SubadminForm({ onClose }) {
         response = await subadminService.createSubadmin(form)
 
         if (response.success) {
-          alert(`Subadmin created successfully! Email sent to ${form.email}`)
+          toast.success(`Subadmin created successfully! Email sent to ${form.email}`)
           if (onClose) onClose()
           else navigate(-1)
         } else {
