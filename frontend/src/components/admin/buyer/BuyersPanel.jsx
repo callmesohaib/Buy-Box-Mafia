@@ -82,7 +82,7 @@ export default function BuyersPanel() {
     setBuyers(data);
     setLoading(false);
     if(userRole === 'subadmin'){
-      setBuyers(data.filter(buyer => buyer.submittedBy === localStorage.getItem('name')));
+      setBuyers(data.filter(buyer => buyer.submittedBy === localStorage.getItem('uid')));
     }
     
   };
@@ -171,7 +171,7 @@ export default function BuyersPanel() {
       skipEmptyLines: true,
       complete: async (results) => {
         let buyers = results.data;
-        const submittedBy = localStorage.getItem('name') || 'Unknown';
+        const submittedBy = localStorage.getItem('uid') || 'Unknown';
         buyers = buyers.map(b => ({ ...b, submittedBy }));
         try {
           const response = await fetch("http://localhost:3001/api/buyers/import", {
@@ -298,7 +298,7 @@ export default function BuyersPanel() {
 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-300">{buyer.submittedBy || 'N/A'}</div>
+                  <div className="text-sm text-gray-300">{buyer.submittedByName || 'N/A'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-300">{buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
@@ -350,7 +350,7 @@ export default function BuyersPanel() {
             <div className="flex flex-col gap-1 text-xs text-gray-300">
               <div><span className="font-medium text-gray-400">Email:</span> {buyer.email}</div>
               <div><span className="font-medium text-gray-400">Phone:</span> {buyer.phone}</div>
-              <div><span className="font-medium text-gray-400">Submitted By:</span> {buyer.submittedBy || 'N/A'}</div>
+              <div><span className="font-medium text-gray-400">Submitted By:</span> {buyer.submittedByName || 'N/A'}</div>
               <div><span className="font-medium text-gray-400">Joined:</span> {buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
             </div>
             {userRole === 'subadmin' && (

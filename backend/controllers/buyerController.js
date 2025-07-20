@@ -1,4 +1,4 @@
-const { db } = require("../utils/firebase");
+const { db, admin } = require("../utils/firebase");
 
 // Add a single buyer
 toFirestoreBuyer = (body) => ({
@@ -37,11 +37,34 @@ exports.addBuyer = async (req, res) => {
 
 exports.getBuyers = async (req, res) => {
   try {
-    const buyers = await db.collection("buyers").get();
-    res
-      .status(200)
-      .json(buyers.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    const buyersSnapshot = await db.collection("buyers").get();
+    const buyers = buyersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Get all unique user IDs from submittedBy fields
+    const userIds = [...new Set(buyers.map(buyer => buyer.submittedBy).filter(Boolean))];
+
+    // Batch fetch all user documents in one query
+    const usersSnapshot = userIds.length > 0 
+      ? await db.collection("users")
+          .where(admin.firestore.FieldPath.documentId(), 'in', userIds)
+          .get()
+      : { docs: [] };
+
+    // Create a map of user IDs to names
+    const usersMap = {};
+    usersSnapshot.forEach(doc => {
+      usersMap[doc.id] = doc.data().name || 'Unknown';
+    });
+
+    // Enhance buyers data with submitter names
+    const buyersWithNames = buyers.map(buyer => ({
+      ...buyer,
+      submittedByName: buyer.submittedBy ? usersMap[buyer.submittedBy] : 'Unknown'
+    }));
+
+    res.status(200).json(buyersWithNames);
   } catch (error) {
+    console.error("Error fetching buyers:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

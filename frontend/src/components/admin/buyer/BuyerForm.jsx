@@ -76,7 +76,7 @@ export default function BuyerForm({ onClose }) {
   }
   const handleSubmit = async e => {
     e.preventDefault();
-    const submittedBy = localStorage.getItem('name') || 'Unknown';
+    const submittedBy = localStorage.getItem('uid') || 'Unknown';
     const payload = { ...form, submittedBy };
     try {
       let response, data;

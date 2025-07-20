@@ -94,6 +94,7 @@ export default function Login() {
           const { user } = await userProfileRes.json();
           localStorage.setItem("name", user.name);
           localStorage.setItem("email", user.email);
+          localStorage.setItem("uid", user.uid);
           if (user.id) localStorage.setItem("subadminId", user.id);
         }
       } catch (e) {
