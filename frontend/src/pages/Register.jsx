@@ -50,20 +50,20 @@ const Register = () => {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden">
-      <div className="w-1/2 h-full overflow-hidden bg-[var(--primary-gray-bg)]">
+    <div className="h-screen w-screen flex flex-col md:flex-row overflow-hidden">
+      <div className="hidden md:block w-1/2 h-full overflow-hidden bg-[var(--primary-gray-bg)]">
         <img
           src=" https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80"
           alt="Luxury Property"
           className="w-full h-full object-cover"
         />
       </div>
-      <div className="w-1/2 h-full bg-gradient-to-br from-[var(--primary-gray-bg)] to-[var(--secondary-gray-bg)] px-4 py-2 sm:px-8 sm:py-4 flex flex-col justify-center">
+      <div className="w-full md:w-1/2 h-full bg-gradient-to-br from-[var(--primary-gray-bg)] to-[var(--secondary-gray-bg)] px-4 py-4 sm:px-8 sm:py-8 flex flex-col justify-center">
         <div className="mb-5 text-left">
-          <span className="text-base sm:text-lg font-bold text-[var(--mafia-red)]">
+          <span className="text-lg md:text-base font-bold text-[var(--mafia-red)]">
             Buy Box Mafia
           </span>
-          <h2 className="text-2xl font-bold text-white mt-5">
+          <h2 className="text-3xl md:text-2xl font-bold text-white mt-5">
             Create Account!
           </h2>
         </div>
@@ -73,7 +73,7 @@ const Register = () => {
           <div className="grid grid-cols-2 gap-2">
             {["firstName", "lastName"].map((field, i) => (
               <div key={field}>
-                <label className="block text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
+                <label className="block text-base md:text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
                   {field === "firstName" ? "First Name" : "Last Name"}
                 </label>
                 <div className="relative">
@@ -88,7 +88,7 @@ const Register = () => {
                     className={`w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b ${errors[field]
                       ? "border-b-red-500"
                       : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                      } focus:ring-0 focus:border-b-red-500 text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+                      } focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                     placeholder={field === "firstName" ? "John" : "Doe"}
                   />
                 </div>
@@ -98,7 +98,7 @@ const Register = () => {
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
+            <label className="block text-base md:text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
               Email
             </label>
             <div className="relative">
@@ -110,10 +110,10 @@ const Register = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b ${errors.email
-                  ? "border-b-red-500"
-                  : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                  } focus:ring-0 focus:border-b-red-500 text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+              className={`w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b ${errors.email
+                ? "border-b-red-500"
+                : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
+                } focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="john@example.com"
               />
             </div>
@@ -121,7 +121,7 @@ const Register = () => {
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
+            <label className="block text-base md:text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
               Phone <span className="text-[var(--secondary-gray-text)]">(optional)</span>
             </label>
             <div className="relative">
@@ -133,7 +133,7 @@ const Register = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className="w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)] focus:ring-0 focus:border-b-red-500 text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200"
+              className="w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)] focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200"
                 placeholder="+1 555 123 4567"
               />
             </div>
@@ -142,7 +142,7 @@ const Register = () => {
           {/* Password */}
           {["password", "confirmPassword"].map((field, i) => (
             <div key={field}>
-              <label className="block text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
+              <label className="block text-base md:text-sm font-medium mb-1 text-[var(--primary-gray-text)]">
                 {field === "password" ? "Password" : "Confirm Password"}
               </label>
               <div className="relative">
@@ -165,7 +165,7 @@ const Register = () => {
                   className={`w-full pl-8 pr-8 py-2 bg-transparent border-0 border-b ${errors[field]
                     ? "border-b-red-500"
                     : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                    } focus:ring-0 focus:border-b-red-500 text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+                    } focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                   placeholder={
                     field === "password"
                       ? "Create a strong password"
@@ -198,7 +198,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-2 rounded bg-[var(--mafia-red)] text-sm text-white font-semibold shadow hover:bg-[var(--mafia-red-hover)] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
+            className="w-full py-2 px-2 rounded bg-[var(--mafia-red)] text-base md:text-sm text-white font-semibold shadow hover:bg-[var(--mafia-red-hover)] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
           >
             {isLoading ? (
               <>
@@ -229,7 +229,7 @@ const Register = () => {
             )}
           </button>
 
-          <div className="mt-3 text-center text-sm text-[var(--secondary-gray-text)]">
+          <div className="mt-3 text-center text-base md:text-sm text-[var(--secondary-gray-text)]">
             Already have an account?{" "}
             <Link
               to="/login"

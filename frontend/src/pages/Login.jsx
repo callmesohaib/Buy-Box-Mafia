@@ -143,8 +143,8 @@ export default function Login() {
     return true;
   };
   return (
-    <div className="h-screen w-screen flex overflow-hidden">
-      <div className="w-1/2 h-full bg-gradient-to-br from-[var(--primary-gray-bg)] to-[var(--secondary-gray-bg)] px-16 py-6 sm:px-28 sm:py-10 flex flex-col justify-center">
+    <div className="h-screen w-screen flex flex-col md:flex-row overflow-hidden">
+      <div className="w-full md:w-1/2 h-full bg-gradient-to-br from-[var(--primary-gray-bg)] to-[var(--secondary-gray-bg)] px-6 py-6 sm:px-16 sm:py-10 md:px-28 md:py-10 flex flex-col justify-center">
         <div className="mb-8 flex items-center gap-3">
           <span className="text-2xl font-bold text-[var(--mafia-red)] tracking-tight">
             Buy Box Mafia
@@ -286,7 +286,7 @@ export default function Login() {
         </form>
       </div>
 
-      <div className="w-1/2 h-full overflow-hidden bg-[var(--primary-gray-bg)]">
+      <div className="hidden md:block w-1/2 h-full overflow-hidden bg-[var(--primary-gray-bg)]">
         <img
           src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80"
           alt="Luxury Property"
