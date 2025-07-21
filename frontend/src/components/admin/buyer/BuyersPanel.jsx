@@ -5,7 +5,8 @@ import {
   Upload,
   ChevronDown,
   ChevronUp,
-  Search
+  Search,
+  Eye
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
@@ -72,6 +73,8 @@ export default function BuyersPanel() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [loading, setLoading] = useState(true);
   const [importError, setImportError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedBuyer, setSelectedBuyer] = useState(null);
 
   const userRole = localStorage.getItem('role');
 
@@ -81,10 +84,10 @@ export default function BuyersPanel() {
     const data = await response.json();
     setBuyers(data);
     setLoading(false);
-    if(userRole === 'subadmin'){
+    if (userRole === 'subadmin') {
       setBuyers(data.filter(buyer => buyer.submittedBy === localStorage.getItem('uid')));
     }
-    
+
   };
 
   useEffect(() => {
@@ -151,6 +154,10 @@ export default function BuyersPanel() {
       navigate(`/buyer/edit/${buyer.id}`, { state: { buyerData: buyer } });
     }
   };
+  const handleView = (buyer) => {
+    setSelectedBuyer(buyer);
+    setModalOpen(true);
+  }
 
   // CSV Import logic
   const fileInputRef = useRef();
@@ -214,6 +221,47 @@ export default function BuyersPanel() {
 
   return (
     <motion.div className="bg-gray-900 rounded-xl p-4 md:p-6" variants={scaleIn} initial="initial" animate="animate">
+      {/* Modal for Buyer Details */}
+      {modalOpen && selectedBuyer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-gray-800 rounded-xl shadow-xl p-4 sm:p-8 w-full max-w-md sm:max-w-2xl relative animate-fadeIn border border-amber-400">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-amber-400 text-xl font-bold focus:outline-none"
+              onClick={() => setModalOpen(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="flex flex-col items-center mb-4 sm:mb-8">
+              <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gray-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-amber-400 mb-2 sm:mb-3 shadow-lg">
+                {getInitials(selectedBuyer.name)}
+              </div>
+              <div className="text-lg sm:text-2xl font-semibold text-white mb-0.5 sm:mb-1 text-center truncate w-full" title={selectedBuyer.name}>{selectedBuyer.name}</div>
+              <div className="text-xs sm:text-base text-gray-400 text-center truncate w-full" title={selectedBuyer.location}>{selectedBuyer.location}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-2 sm:gap-x-12 sm:gap-y-4 text-gray-300 text-xs sm:text-sm">
+              <div><span className="font-medium text-gray-400">Email:</span> <span className="ml-1 break-all">{selectedBuyer.email}</span></div>
+              <div><span className="font-medium text-gray-400">Phone:</span> <span className="ml-1">{selectedBuyer.phone}</span></div>
+              <div><span className="font-medium text-gray-400">Submitted By:</span> <span className="ml-1">{selectedBuyer.submittedByName || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Joined:</span> <span className="ml-1">{selectedBuyer.createdAt ? formatDate(selectedBuyer.createdAt) : 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Access:</span> <span className="ml-1">{selectedBuyer.accessRequired || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Budget Min:</span> <span className="ml-1">{selectedBuyer.budgetMin || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Budget Max:</span> <span className="ml-1">{selectedBuyer.budgetMax || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Market:</span> <span className="ml-1">{selectedBuyer.buyOnMarket || 'N/A'}</span></div>
+              <div className="col-span-2"><span className="font-medium text-gray-400">Buying Locations:</span> <span className="ml-1">{selectedBuyer.buyingLocations || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">City:</span> <span className="ml-1">{selectedBuyer.city || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Country:</span> <span className="ml-1">{selectedBuyer.country || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Lot Min:</span> <span className="ml-1">{selectedBuyer.lotSizeMin || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Lot Max:</span> <span className="ml-1">{selectedBuyer.lotSizeMax || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Cleared:</span> <span className="ml-1">{selectedBuyer.mustBeCleared || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Price Per:</span> <span className="ml-1">{selectedBuyer.pricePer || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Timeline:</span> <span className="ml-1">{selectedBuyer.timeline || 'N/A'}</span></div>
+              <div><span className="font-medium text-gray-400">Utilities:</span> <span className="ml-1">{selectedBuyer.utilities || 'N/A'}</span></div>
+              <div className="col-span-2"><span className="font-medium text-gray-400">Zoning Types:</span> <span className="ml-1">{selectedBuyer.zoningTypes || 'N/A'}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
@@ -273,9 +321,9 @@ export default function BuyersPanel() {
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Submitted By</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Joined</th>
-              {userRole === 'subadmin' && (
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-              )}
+
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -303,32 +351,45 @@ export default function BuyersPanel() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-300">{buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
                 </td>
-                {userRole === 'subadmin' && (
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2">
-                      <motion.button
-                        variants={buttonHover}
-                        whileHover="whileHover"
-                        whileTap="whileTap"
-                        className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors"
-                        title="Edit Buyer"
-                        onClick={() => handleEdit(buyer)}
-                      >
-                        <Edit size={18} />
-                      </motion.button>
-                      <motion.button
-                        variants={buttonHover}
-                        whileHover="whileHover"
-                        whileTap="whileTap"
-                        className="p-2 text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
-                        title="Delete Buyer"
-                        onClick={() => handleDelete(buyer.id)}
-                      >
-                        <Trash2 size={18} />
-                      </motion.button>
-                    </div>
-                  </td>
-                )}
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex justify-end gap-2">
+                    {userRole === 'subadmin' && (
+                      <>
+                        <motion.button
+                          variants={buttonHover}
+                          whileHover="whileHover"
+                          whileTap="whileTap"
+                          className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors"
+                          title="Edit Buyer"
+                          onClick={() => handleEdit(buyer)}
+                        >
+                          <Edit size={18} />
+                        </motion.button>
+
+                        <motion.button
+                          variants={buttonHover}
+                          whileHover="whileHover"
+                          whileTap="whileTap"
+                          className="p-2 text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
+                          title="Delete Buyer"
+                          onClick={() => handleDelete(buyer.id)}
+                        >
+                          <Trash2 size={18} />
+                        </motion.button>
+                      </>
+                    )}
+                    <motion.button
+                      variants={buttonHover}
+                      whileHover="whileHover"
+                      whileTap="whileTap"
+                      className="p-2 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-colors"
+                      title="View Buyer"
+                      onClick={() => handleView(buyer)}
+                    >
+                      <Eye size={18} />
+                    </motion.button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -353,20 +414,27 @@ export default function BuyersPanel() {
               <div><span className="font-medium text-gray-400">Submitted By:</span> {buyer.submittedByName || 'N/A'}</div>
               <div><span className="font-medium text-gray-400">Joined:</span> {buyer.createdAt ? formatDate(buyer.createdAt) : 'N/A'}</div>
             </div>
-            {userRole === 'subadmin' && (
 
 
-              <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
-                <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-amber-400 text-amber-400 text-xs rounded-lg hover:bg-amber-400/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Edit Buyer" onClick={() => handleEdit(buyer)}>
-                  <Edit size={15} />
-                  Edit
-                </motion.button>
-                <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-red-400 text-red-400 text-xs rounded-lg hover:bg-red-600/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Delete Buyer" onClick={() => handleDelete(buyer.id)}>
-                  <Trash2 size={15} />
-                  Delete
-                </motion.button>
-              </div>
-            )}
+            <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
+              {userRole === 'subadmin' && (
+                <>
+                  <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-amber-400 text-amber-400 text-xs rounded-lg hover:bg-amber-400/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Edit Buyer" onClick={() => handleEdit(buyer)}>
+                    <Edit size={15} />
+                    Edit
+                  </motion.button>
+
+                  <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border border-red-400 text-red-400 text-xs rounded-lg hover:bg-red-600/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="Delete Buyer" onClick={() => handleDelete(buyer.id)}>
+                    <Trash2 size={15} />
+                    Delete
+                  </motion.button>
+                </>
+              )}
+              <motion.button variants={buttonHover} whileHover="whileHover" whileTap="whileTap" className="flex-1 px-3 py-2 border  border-amber-400 text-amber-400 text-xs rounded-lg hover:bg-amber-400/10 transition-colors flex items-center justify-center gap-1 font-semibold" title="View Buyer" onClick={() => handleView(buyer)}>
+                <Eye size={15} />
+                View
+              </motion.button>
+            </div>
           </div>
         ))}
       </div>
