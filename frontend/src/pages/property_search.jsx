@@ -23,7 +23,10 @@ export default function PropertySearch() {
   const [error, setError] = useState("");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true); // <-- Add loading state
+  const [loading, setLoading] = useState(true);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
 
   const key = import.meta.env.VITE_REPLIERS_API_KEY;
   const url = import.meta.env.VITE_REPLIERS_API_URL;
@@ -94,6 +97,7 @@ export default function PropertySearch() {
       );
     }
     setFilteredProperties(filtered);
+    setCurrentPage(1); // Reset to first page on filter change
   }, [searchParams, propertiesData]);
 
   // Sorting logic
@@ -144,6 +148,13 @@ export default function PropertySearch() {
     }
     return sorted;
   }, [filteredProperties, sortBy]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedProperties.length / pageSize);
+  const paginatedProperties = useMemo(() => {
+    const startIdx = (currentPage - 1) * pageSize;
+    return sortedProperties.slice(startIdx, startIdx + pageSize);
+  }, [sortedProperties, currentPage]);
 
   // Helper for address formatting
   function formatAddressForSearch(addressObj) {
@@ -373,14 +384,49 @@ export default function PropertySearch() {
             </div>
           </motion.div>
 
-          {/* Properties Grid */}
+
+          {/* Properties Grid with Pagination */}
           <motion.div
             variants={gridContainer}
             initial="initial"
             animate="animate"
           >
-            <PropertyResults properties={sortedProperties} onCardClick={handleCardClick} />
+            <PropertyResults properties={paginatedProperties} onCardClick={handleCardClick} />
           </motion.div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-wrap justify-center items-center gap-2 mt-8">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 rounded-lg bg-[var(--secondary-gray-bg)] border border-[var(--tertiary-gray-bg)] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-lg font-medium border transition-colors ${
+                    currentPage === page
+                      ? 'bg-[var(--mafia-red)] text-white border-[var(--mafia-red)]'
+                      : 'bg-[var(--secondary-gray-bg)] text-white border-[var(--tertiary-gray-bg)] hover:bg-[var(--mafia-red-hover)] hover:text-white'
+                  }`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 rounded-lg bg-[var(--secondary-gray-bg)] border border-[var(--tertiary-gray-bg)] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
 
           {/* Modal for property details */}
           {showModal && selectedProperty && (

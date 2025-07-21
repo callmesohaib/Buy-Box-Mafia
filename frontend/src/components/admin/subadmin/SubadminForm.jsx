@@ -151,18 +151,18 @@ export default function SubadminForm({ onClose }) {
                 className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
-              <input
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="e.g., New York, NY"
-                className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
-              />
-            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
+            <input
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              required
+              disabled={loading}
+              placeholder="e.g., New York, NY"
+              className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50"
+            />
           </div>
         </div>
         <div className="flex justify-end mt-8">
