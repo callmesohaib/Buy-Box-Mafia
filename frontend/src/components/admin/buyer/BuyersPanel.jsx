@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { buttonHover, fadeInUp, scaleIn } from "../../../animations/animation";
 import Papa from "papaparse";
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 
 function getInitials(name) {
   return name
