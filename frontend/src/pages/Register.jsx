@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Phone, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
+  const navigate = useNavigate();
   const handleInputChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -67,6 +68,7 @@ const Register = () => {
           password: "",
           confirmPassword: "",
         });
+        navigate("/login");
       } else {
         toast.error(data.message || "Registration failed");
       }

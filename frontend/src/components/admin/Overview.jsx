@@ -1,26 +1,16 @@
 import { motion } from "framer-motion"
-import { 
-  FileText, 
-  Users, 
-  DollarSign, 
+import {
+  FileText,
+  Users,
+  DollarSign,
   TrendingUp,
-  Plus,
-  Download,
-  Bell,
-  Settings
 } from "lucide-react"
-import { buttonHover, staggerContainer, staggerItem } from "../../animations/animation"
+import { staggerContainer, staggerItem } from "../../animations/animation"
 import analyticsData from "../../data/analytics.json"
 import deals from "../../data/deals.json"
 import buyers from "../../data/buyers.json"
 
 export default function Overview() {
-  const quickActions = [
-    { label: "Add New Deal", icon: Plus, color: "red" },
-    { label: "Export Data", icon: Download, color: "green" },
-    { label: "Notifications", icon: Bell, color: "gold" },
-    { label: "Settings", icon: Settings, color: "gray" }
-  ]
 
   return (
     <motion.div

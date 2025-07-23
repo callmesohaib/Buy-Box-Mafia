@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom"
+import ProtectedRoute from "../protectedRoutes";
 import Overview from "./Overview"
 import DealsTable from "./deal/DealsTable"
 import BuyersPanel from "./buyer/BuyersPanel"
@@ -10,10 +11,14 @@ import AdminDashboard from "../../pages/AdminDashboard"
 import SubadminsPanel from "./subadmin/SubadminsPanel"
 import SubadminForm from "./subadmin/SubadminForm"
 
-export default function AdminRoutes({ analyticsData, deals, buyers }) {
+export default function AdminRoutes() {
     return (
         <Routes>
-            <Route element={<AdminDashboard />}>
+            <Route element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminDashboard />
+                </ProtectedRoute>
+            }>
                 <Route path="/" element={<Overview  />} />
                 <Route path="deals" element={<DealsTable  />} />
                 <Route path="buyer" element={<BuyersPanel  />} />

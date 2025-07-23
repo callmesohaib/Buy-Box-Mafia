@@ -20,6 +20,7 @@ import SubadminRoutes from "./components/admin/SubadminRoutes";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "react-hot-toast";
 import "react-toastify/dist/ReactToastify.css";
+import ProtectedRoute from "./components/protectedRoutes";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -88,19 +89,47 @@ function AppContent() {
       <main className={`flex-1 ${!isAdminPage ? "pt-16" : ""}`}>
         <ScrollToTop />
         <Routes>
-          <Route path="/property-search" element={<PropertySearch />} />
+          <Route path="/property-search" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <PropertySearch />
+            </ProtectedRoute>
+          } />
           <Route
             path="/"
             element={<Navigate to="/property-search" replace />}
           />
-          <Route path="/valuation/:id" element={<ValuationResult />} />
+          <Route path="/valuation/:id" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <ValuationResult />
+            </ProtectedRoute>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/contract/:dealId" element={<ContractPreparation />} />
-          <Route path="/submit/:id" element={<DealSubmission />} />
-          <Route path="/deals" element={<MyDeals />} />
-          <Route path="/admin/*" element={<AdminRoutes />} />
-          <Route path="/subadmin/*" element={<SubadminRoutes />} />
+          <Route path="/contract/:dealId" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <ContractPreparation />
+            </ProtectedRoute>
+          } />
+          <Route path="/submit/:id" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <DealSubmission />
+            </ProtectedRoute>
+          } />
+          <Route path="/deals" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <MyDeals />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/*" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminRoutes />
+            </ProtectedRoute>
+          } />
+          <Route path="/subadmin/*" element={
+            <ProtectedRoute allowedRoles={["subadmin"]}>
+              <SubadminRoutes />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

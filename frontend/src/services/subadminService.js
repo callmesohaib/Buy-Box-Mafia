@@ -1,23 +1,5 @@
 const API_BASE_URL = "http://localhost:3001/api";
 
-// Get auth token from Firebase
-const getAuthToken = async () => {
-  try {
-    const { auth } = await import("../firebase/client");
-    const user = auth.currentUser;
-    if (user) {
-      const token = await user.getIdToken();
-      console.log("Auth token retrieved successfully, length:", token.length);
-      return token;
-    }
-    console.log("No current user found");
-    return "";
-  } catch (error) {
-    console.error("Error getting auth token:", error);
-    return "";
-  }
-};
-
 // API service for subadmin operations
 export const subadminService = {
   // Get all subadmins
@@ -143,33 +125,6 @@ export const subadminService = {
       return data;
     } catch (error) {
       console.error("Error deleting subadmin:", error);
-      throw error;
-    }
-  },
-
-  // Reset subadmin password
-  resetPassword: async (id) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/subadmin/${id}/reset-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getAuthToken()}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to reset password");
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error resetting password:", error);
       throw error;
     }
   },
