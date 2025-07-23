@@ -47,6 +47,7 @@ export default function ValuationResult() {
   const [buyers, setBuyers] = useState([])
   const [buyersLoading, setBuyersLoading] = useState(true)
   const [buyersError, setBuyersError] = useState(null)
+  const [matchedBuyers, setMatchedBuyers] = useState([])
 
   const PROPERTY_IMAGE_URL = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_3.jpg';
 
@@ -89,7 +90,61 @@ export default function ValuationResult() {
       });
   }, [mlsNumber]);
 
-  // Fetch buyers from API
+
+  // Helper: calculate match percentage between property and buyer
+  function calculateBuyerMatch(property, buyer) {
+    if (!property || !buyer) return 0;
+    let score = 0;
+    let total = 0;
+
+    // 1. City match
+    total++;
+    if (
+      property.address?.city &&
+      buyer.city &&
+      property.address.city.toLowerCase() === buyer.city.toLowerCase()
+    ) score++;
+
+    // 2. Country match
+    total++;
+    if (
+      property.address?.country &&
+      buyer.country &&
+      property.address.country.toLowerCase() === buyer.country.toLowerCase()
+    ) score++;
+
+    // 3. Class match (property.class vs buyer.zoningTypes)
+    total++;
+    if (
+      property.class &&
+      buyer.zoningTypes &&
+      Array.isArray(buyer.zoningTypes) &&
+      buyer.zoningTypes.map(z => z.toLowerCase()).includes(property.class.toLowerCase())
+    ) score++;
+
+    // 4. Buying locations (property city in buyer.buyingLocations)
+    total++;
+    if (
+      property.address?.city &&
+      buyer.buyingLocations &&
+      Array.isArray(buyer.buyingLocations) &&
+      buyer.buyingLocations.map(l => l.toLowerCase()).includes(property.address.city.toLowerCase())
+    ) score++;
+
+    // 5. Budget match (property.originalPrice between buyer.budgetMin and buyer.budgetMax)
+    total++;
+    const price = Number(property.originalPrice || property.listPrice);
+    const min = Number(buyer.budgetMin);
+    const max = Number(buyer.budgetMax);
+    if (!isNaN(price) && !isNaN(min) && !isNaN(max) && price >= min && price <= max) score++;
+    else if (!isNaN(price) && !isNaN(min) && isNaN(max) && price >= min) score++;
+    else if (!isNaN(price) && isNaN(min) && !isNaN(max) && price <= max) score++;
+
+    // Return percentage
+    return Math.round((score / total) * 100);
+  }
+
+  // Fetch buyers from API and calculate matches
   useEffect(() => {
     setBuyersLoading(true);
     setBuyersError(null);
@@ -100,20 +155,33 @@ export default function ValuationResult() {
       })
       .then((data) => {
         setBuyers(data);
+        // Calculate matches if propertyData is available
+        if (propertyData) {
+          const matches = data
+            .map(buyer => ({
+              ...buyer,
+              matchPercent: calculateBuyerMatch(propertyData, buyer)
+            }))
+            .filter(b => b.matchPercent > 0)
+            .sort((a, b) => b.matchPercent - a.matchPercent);
+          setMatchedBuyers(matches);
+        }
         setBuyersLoading(false);
       })
       .catch((e) => {
         setBuyersError(e.message);
         setBuyers([]);
+        setMatchedBuyers([]);
         setBuyersLoading(false);
       });
-  }, []);
+  }, [propertyData]);
 
   const handlePrepareDealPackage = () => {
     navigate("/contract/22")
   }
 
-  if (isLoading) {
+  // Show loading spinner until BOTH property and buyers are loaded
+  if (isLoading || buyersLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
         <div className="text-center">
@@ -213,7 +281,7 @@ export default function ValuationResult() {
                   <h3 className="font-semibold text-green-200">Perfect Buyer Match Found!</h3>
                 </div>
                 <p className="text-green-200 text-sm mb-3">
-                  There are <span className="font-bold">{buyers.length}</span> buyers who match this property.
+                  There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
                   We can sell it to them for <span className="font-bold">${propertyData.listPrice}</span>.
                 </p>
                 <div className="flex items-center gap-4 text-sm">
@@ -333,7 +401,7 @@ export default function ValuationResult() {
         </motion.div>
 
 
-        {/* Buyers Table with Tabs - now using real API data */}
+        {/* Buyers Table with Match Percentage */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -352,7 +420,7 @@ export default function ValuationResult() {
             >
               <div className="flex items-center justify-center gap-2">
                 <Award size={16} />
-                Top Matches ({buyers.length > 3 ? 3 : buyers.length})
+                Top Matches ({matchedBuyers.length > 3 ? 3 : matchedBuyers.length})
               </div>
             </button>
             <button
@@ -364,7 +432,7 @@ export default function ValuationResult() {
             >
               <div className="flex items-center justify-center gap-2">
                 <Users size={16} />
-                All Buyers ({buyers.length})
+                All Matches ({matchedBuyers.length})
               </div>
             </button>
           </div>
@@ -374,55 +442,48 @@ export default function ValuationResult() {
               <div className="text-center text-white py-8">Loading buyers...</div>
             ) : buyersError ? (
               <div className="text-center text-red-500 py-8">{buyersError}</div>
-            ) : buyers.length === 0 ? (
-              <div className="text-center text-[var(--mafia-red)] font-medium py-8">No buyers found.</div>
+            ) : matchedBuyers.length === 0 ? (
+              <div className="text-center text-[var(--mafia-red)] font-medium py-8">No matched buyers found.</div>
             ) : (
               <table className="w-full border-collapse">
                 <thead className="bg-[var(--tertiary-gray-bg)] sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Phone</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">City</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Country</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buying Locations</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Lot Size Min</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Lot Size Max</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Price Per</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Must Be Cleared</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Zoning Types</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Access Required</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Utilities</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buy On Market</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Budget Min</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Budget Max</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Rank</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buyer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Fit Score</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Offer</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Timeline</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[var(--secondary-gray-bg)] divide-y divide-[var(--quaternary-gray-bg)]">
-                  {(activeTab === 'top' ? buyers.slice(0, 3) : buyers).map((buyer, index) => (
-                    <tr key={buyer.id || index} className="hover:bg-[var(--tertiary-gray-bg)] transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap font-bold">{index + 1}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-white">{formatValue(buyer.name)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.email)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.phone)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.city)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.country)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.buyingLocations)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.lotSizeMin)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.lotSizeMax)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.pricePer)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.mustBeCleared)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.zoningTypes)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.accessRequired)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.utilities)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.buyOnMarket)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.budgetMin)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.budgetMax)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.timeline)}</td>
-                    </tr>
-                  ))}
+                  {(activeTab === 'top' ? matchedBuyers.slice(0, 3) : matchedBuyers).map((buyer, index) => {
+                    // Gold for first, silver for second, bronze for third
+                    let rankCircle;
+                    if (index === 0) {
+                      rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 text-black font-bold mr-2">1</span>;
+                    } else if (index === 1) {
+                      rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 text-black font-bold mr-2">2</span>;
+                    } else if (index === 2) {
+                      rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-amber-700 to-yellow-300 text-white font-bold mr-2">3</span>;
+                    } else {
+                      rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--tertiary-gray-bg)] text-white font-bold mr-2">{index + 1}</span>;
+                    }
+                    return (
+                      <tr
+                        key={buyer.id || index}
+                        className={`hover:bg-[var(--tertiary-gray-bg)] transition-colors ${index === 0 && activeTab === 'top'
+                          ? 'bg-[linear-gradient(to_right,rgba(247,200,68,0.2),rgba(247,200,68,0.1))] border-l-4 border-[var(--gold)]'
+                          : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap font-bold">{rankCircle}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-white">Buyer {index + 1}</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-bold" style={{color: buyer.matchPercent >= 90 ? '#22c55e' : buyer.matchPercent >= 80 ? '#f59e42' : '#eab308'}}>{buyer.matchPercent}%</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatBudget(buyer.budgetMin, buyer.budgetMax)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-200 flex items-center gap-1">{formatValue(buyer.timeline)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
