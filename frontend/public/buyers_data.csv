@@ -1,0 +1,7 @@
+name,email,phone,city,country,buyingLocations,lotSizeMin,lotSizeMax,pricePer,mustBeCleared,zoningTypes,accessRequired,utilities,buyOnMarket,budgetMin,budgetMax,timeline
+Sarah Johnson,sarah@example.com,4449876543,Toronto,Canada,"Toronto, ON",3,15,200000,yes,ResidentialProperty,yes,"Water,Electricity,Natural Gas",no,40000,50000,90 days
+Alex Smith,alex@example.com,5551112222,Toronto,Canada,"Toronto, ON",2,10,150000,no,ResidentialProperty,no,Electricity,yes,30000,60000,60 days
+Emily Davis,emily@example.com,2227894561,Montreal,Canada,"Toronto, ON",2,5,90000,yes,ResidentialProperty,yes,"Water,Electricity,Solar",no,35000,41000,60 days
+John Doe,john@example.com,1234567890,Paris,USA,"New York, NY",1,5,100000,yes,"Residential,Commercial",yes,"Water,Electricity",no,50000,200000,30 days
+Jane Smith,jane@example.com,9876543210,London,UK,"Los Angeles, CA",2,10,150000,no,Agricultural,no,Electricity,yes,100000,300000,60 days
+Michael Brown,michael@example.com,5551234567,Chicago,USA,"Chicago, IL",0.5,3,120000,yes,"Residential,Mixed-Use",yes,"Water,Electricity,Internet",yes,80000,250000,45 days

@@ -1,9 +1,6 @@
 import PropertyCard from "./PropertyCard";
 
-export default function PropertyResults({
-    properties,
-    onCardClick,
-}) {
+export default function PropertyResults({ properties, onCardClick }) {
     if (!properties || !Array.isArray(properties)) {
         return (
             <div className="text-center text-white py-8">
@@ -18,7 +15,7 @@ export default function PropertyResults({
                 <PropertyCard
                     key={property.mlsNumber || property.id || Math.random()}
                     property={property}
-                    onClick={onCardClick}
+                    onCardClick={onCardClick}
                 />
             ))}
         </div>

@@ -9,6 +9,7 @@ import {
   slideInUp,
   gridContainer
 } from "../animations/animation"
+import { useNavigate } from "react-router-dom";
 
 export default function PropertySearch() {
   const [propertiesData, setpropertiesData] = useState([])
@@ -30,6 +31,8 @@ export default function PropertySearch() {
 
   const key = import.meta.env.VITE_REPLIERS_API_KEY;
   const url = import.meta.env.VITE_REPLIERS_API_URL;
+
+  const navigate = useNavigate();
 
   async function fetchListings() {
     setLoading(true); // <-- Set loading true before fetch

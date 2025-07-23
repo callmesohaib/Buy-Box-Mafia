@@ -1,10 +1,8 @@
 import { MapPin, Hash, Star, Eye, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function PropertyCard({ property, onClick }) {
+export default function PropertyCard({ property, onCardClick }) {
   const navigate = useNavigate();
-
-
 
   const formatAddress = (addressObj) => {
     if (typeof addressObj === 'string') {
@@ -32,6 +30,8 @@ export default function PropertyCard({ property, onClick }) {
   };
   const propertyData = {
     id: property.mlsNumber || property.id || 'N/A',
+    city: property.address ? property.address.city || 'City not available' : 'City not available',
+    country: property.address ? property.address.country || 'Country not available' : 'Country not available',
     title: property.address ? formatAddress(property.address) : property.title || 'Property Listing',
     address: property.address ? formatAddress(property.address) : 'Address not available',
     apn: property.mlsNumber || property.apn || 'N/A',
@@ -44,13 +44,16 @@ export default function PropertyCard({ property, onClick }) {
       : 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_4.jpg',
     propertyFeatures: property.features || []
   };
-  const handlePropertyClick = (propertyId) => {
-    navigate(`/valuation/${propertyId}`);
-  };
+  const handleCardClick = (e) => {
+    // Only trigger modal if not clicking the Run Valuation button
+    if (onCardClick && !e.target.closest('.run-valuation-btn')) {
+      onCardClick(property);
+    }
+  }
 
   return (
-    <div className="group cursor-pointer" onClick={() => onClick && onClick(property)}>
-      <div className="bg-[var(--secondary-gray-bg)] rounded-2xl shadow-sm border border-[var(--tertiary-gray-bg)] overflow-hidden hover:shadow-lg transition-all duration-300">
+    <div className="group cursor-pointer h-full flex flex-col" onClick={handleCardClick}>
+      <div className="bg-[var(--secondary-gray-bg)] rounded-2xl shadow-sm border border-[var(--tertiary-gray-bg)] overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col h-full min-h-[500px]">
         <div className="relative">
           <img
             src={propertyData.propertyImage}
@@ -70,7 +73,7 @@ export default function PropertyCard({ property, onClick }) {
           </h3>
           <div className="flex items-center gap-2 text-sm text-[var(--primary-gray-text)] mb-2">
             <MapPin size={14} />
-            <span className="line-clamp-1">{propertyData.address}</span>
+            <span className="line-clamp-1">{propertyData.city}, {propertyData.country}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-[var(--primary-gray-text)] mb-3">
             <Hash size={14} />
@@ -94,8 +97,8 @@ export default function PropertyCard({ property, onClick }) {
             ))}
           </div>
           <button
-            className="mt-auto w-full bg-[var(--mafia-red)] hover:bg-[var(--mafia-red-hover)] text-white font-semibold py-2 rounded-xl transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2"
-            onClick={e => { e.stopPropagation(); handlePropertyClick(propertyData.id); }}
+            className="run-valuation-btn mt-auto w-full bg-[var(--mafia-red)] hover:bg-[var(--mafia-red-hover)] text-white font-semibold py-2 rounded-xl transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+            onClick={e => { e.stopPropagation(); navigate(`/valuation/${property.mlsNumber || property.id || 'N/A'}`, { state: { property } }); }}
           >
             Run Valuation
           </button>

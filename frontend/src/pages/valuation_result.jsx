@@ -24,6 +24,7 @@ import {
   Zap,
   Timer
 } from "lucide-react"
+
 import {
   fadeInUp,
   staggerContainer,
@@ -35,24 +36,78 @@ import {
   gridContainer,
   gridItem
 } from "../animations/animation"
-import propertiesData from "../data/properties.json";
 
 export default function ValuationResult() {
-  const { id } = useParams()
+
+  const { id: mlsNumber } = useParams()
   const navigate = useNavigate()
   const [propertyData, setPropertyData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('top')
+  const [buyers, setBuyers] = useState([])
+  const [buyersLoading, setBuyersLoading] = useState(true)
+  const [buyersError, setBuyersError] = useState(null)
 
-  // Simulate fetching property data by ID
+  const PROPERTY_IMAGE_URL = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_3.jpg';
+
+  // Format helpers
+  const formatValue = (val) => (val === undefined || val === null || val === "" ? "N/A" : val);
+  const formatBudget = (min, max) => {
+    if (min && max) return `$${min} - $${max}`;
+    if (min) return `From $${min}`;
+    if (max) return `Up to $${max}`;
+    return "N/A";
+  };
+  const formatList = (val) => {
+    if (!val) return "N/A";
+    if (Array.isArray(val)) return val.join(", ");
+    return val;
+  };
+
+  // Fetch property data from Repliers API by MLS number
   useEffect(() => {
+    if (!mlsNumber) return;
     setIsLoading(true);
-    setTimeout(() => {
-      const foundProperty = propertiesData.find((p) => p.id === id);
-      setPropertyData(foundProperty || null);
-      setIsLoading(false);
-    }, 500);
-  }, [id]);
+    setPropertyData(null);
+    fetch(`https://api.repliers.io/listings/${mlsNumber}`, {
+      headers: {
+        'REPLIERS-API-KEY': '41MCTXQRjF5HUStcQkFuNfYhGU56Je',
+        'accept': 'application/json',
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch property');
+        return res.json();
+      })
+      .then((data) => {
+        setPropertyData(data);
+        setIsLoading(false);
+      })
+      .catch((e) => {
+        setPropertyData(null);
+        setIsLoading(false);
+      });
+  }, [mlsNumber]);
+
+  // Fetch buyers from API
+  useEffect(() => {
+    setBuyersLoading(true);
+    setBuyersError(null);
+    fetch("http://localhost:3001/api/buyers")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch buyers");
+        return res.json();
+      })
+      .then((data) => {
+        setBuyers(data);
+        setBuyersLoading(false);
+      })
+      .catch((e) => {
+        setBuyersError(e.message);
+        setBuyers([]);
+        setBuyersLoading(false);
+      });
+  }, []);
 
   const handlePrepareDealPackage = () => {
     navigate("/contract/22")
@@ -66,7 +121,7 @@ export default function ValuationResult() {
           <p className="text-[var(--secondary-gray-text)]">Loading property analysis...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!propertyData) {
@@ -82,7 +137,7 @@ export default function ValuationResult() {
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -114,7 +169,7 @@ export default function ValuationResult() {
             variants={textReveal}
             className="text-[var(--secondary-gray-text)] text-base sm:text-lg"
           >
-            Comprehensive analysis for {propertyData.address}
+            Comprehensive analysis for {propertyData.address?.streetNumber} {propertyData.address?.streetName} {propertyData.address?.streetSuffix}, {propertyData.address?.city}, {propertyData.address?.state} {propertyData.address?.zip}
           </motion.p>
         </motion.div>
 
@@ -128,21 +183,23 @@ export default function ValuationResult() {
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="relative">
               <img
-                src={propertyData.propertyImage}
-                alt="Property"
+                src={PROPERTY_IMAGE_URL}
+                alt={formatValue(propertyData.address?.streetName) || 'Property'}
                 className="w-full h-64 sm:h-80 lg:h-full object-cover"
+                onError={e => { e.target.src = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_2.jpg'; }}
               />
               <div className="absolute top-4 left-4 bg-[var(--mafia-red)] text-white px-3 py-1 rounded-lg text-sm font-medium">
-                {propertyData.zoningType}
+                {propertyData.class}
               </div>
             </div>
 
             <div className="p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
-                {propertyData.address}
+                {propertyData.address?.streetNumber} {propertyData.address?.streetName} {propertyData.address?.streetSuffix}, {propertyData.address?.city}, {propertyData.address?.state} {propertyData.address?.zip}
               </h2>
 
               {/* Buyer Match Alert */}
+              {/* Example Buyer Match Alert (static, since API does not provide this) */}
               <motion.div
                 variants={fadeInUp}
                 initial="initial"
@@ -156,17 +213,17 @@ export default function ValuationResult() {
                   <h3 className="font-semibold text-green-200">Perfect Buyer Match Found!</h3>
                 </div>
                 <p className="text-green-200 text-sm mb-3">
-                  There are <span className="font-bold">{propertyData.buyerMatch.totalBuyers} buyers</span> who match this property.
-                  We can sell it to them for <span className="font-bold">{propertyData.resaleValue}</span>.
+                  There are <span className="font-bold">{buyers.length}</span> buyers who match this property.
+                  We can sell it to them for <span className="font-bold">${propertyData.listPrice}</span>.
                 </p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <TrendingUp size={14} className="text-green-300" />
-                    <span className="text-green-200">Resale Value: {propertyData.resaleValue}</span>
+                    <span className="text-green-200">List Price: ${propertyData.listPrice}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <TrendingDown size={14} className="text-[var(--mafia-red)]" />
-                    <span className="text-[var(--mafia-red)]">Offer Price: {propertyData.estimatedValue}</span>
+                    <span className="text-[var(--mafia-red)]">Original Price: ${propertyData.originalPrice}</span>
                   </div>
                 </div>
               </motion.div>
@@ -177,8 +234,8 @@ export default function ValuationResult() {
                     <DollarSign size={18} className="text-[var(--mafia-red)]" />
                   </div>
                   <div>
-                    <p className="text-sm text-[var(--secondary-gray-text)]">Estimated Value</p>
-                    <p className="text-lg font-bold text-white">{propertyData.estimatedValue}</p>
+                    <p className="text-sm text-[var(--secondary-gray-text)]">List Price</p>
+                    <p className="text-lg font-bold text-white">${propertyData.listPrice}</p>
                   </div>
                 </div>
 
@@ -188,7 +245,7 @@ export default function ValuationResult() {
                   </div>
                   <div>
                     <p className="text-sm text-[var(--secondary-gray-text)]">Lot Size</p>
-                    <p className="text-lg font-bold text-white">{propertyData.lotSize} acres</p>
+                    <p className="text-lg font-bold text-white">{propertyData.lot?.width} x {propertyData.lot?.depth} {propertyData.lot?.measurement}</p>
                   </div>
                 </div>
 
@@ -197,8 +254,8 @@ export default function ValuationResult() {
                     <Building size={18} className="text-purple-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-[var(--secondary-gray-text)]">Owner</p>
-                    <p className="text-lg font-bold text-white">{propertyData.ownerName}</p>
+                    <p className="text-sm text-[var(--secondary-gray-text)]">Type</p>
+                    <p className="text-lg font-bold text-white">{propertyData.details?.propertyType}</p>
                   </div>
                 </div>
 
@@ -207,8 +264,8 @@ export default function ValuationResult() {
                     <Calendar size={18} className="text-orange-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-[var(--secondary-gray-text)]">Last Sale</p>
-                    <p className="text-lg font-bold text-white">{propertyData.lastSale}</p>
+                    <p className="text-sm text-[var(--secondary-gray-text)]">List Date</p>
+                    <p className="text-lg font-bold text-white">{propertyData.listDate ? new Date(propertyData.listDate).toLocaleDateString() : '-'}</p>
                   </div>
                 </div>
               </div>
@@ -231,7 +288,7 @@ export default function ValuationResult() {
           </div>
         </motion.div>
 
-        {/* Resale Estimate with Badges */}
+        {/* Resale Estimate (API does not provide, so show price and status) */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -244,41 +301,39 @@ export default function ValuationResult() {
               <div className="w-8 h-8 bg-[var(--mafia-red)] rounded-lg flex items-center justify-center">
                 <Zap size={16} className="text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Resale Estimate</h3>
+              <h3 className="text-lg font-semibold text-white">Listing Details</h3>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-900/30 rounded-xl border border-green-700">
-                <div className="text-2xl font-bold text-green-300 mb-1">{propertyData.resaleEstimate.quickSale}</div>
-                <div className="text-sm text-green-200 font-medium mb-2">Quick Sale</div>
+                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.listPrice}</div>
+                <div className="text-sm text-green-200 font-medium mb-2">List Price</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-green-300">
                   <Timer size={12} />
-                  {propertyData.resaleEstimate.timeframes.quick}
+                  {propertyData.status}
                 </div>
               </div>
-
               <div className="text-center p-4 bg-yellow-900/30 rounded-xl border border-yellow-700">
-                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.resaleEstimate.marketValue}</div>
-                <div className="text-sm text-yellow-200 font-medium mb-2">Market Value</div>
+                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.details?.numBedrooms} Bed</div>
+                <div className="text-sm text-yellow-200 font-medium mb-2">Bedrooms</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-yellow-300">
                   <Timer size={12} />
-                  {propertyData.resaleEstimate.timeframes.market}
+                  {propertyData.details?.numBathrooms} Bath
                 </div>
               </div>
-
               <div className="text-center p-4 bg-purple-900/30 rounded-xl border border-purple-700">
-                <div className="text-2xl font-bold text-purple-300 mb-1">{propertyData.resaleEstimate.premium}</div>
-                <div className="text-sm text-purple-200 font-medium mb-2">Premium</div>
+                <div className="text-2xl font-bold text-purple-300 mb-1">{propertyData.details?.sqft}</div>
+                <div className="text-sm text-purple-200 font-medium mb-2">Sqft</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-purple-300">
                   <Timer size={12} />
-                  {propertyData.resaleEstimate.timeframes.premium}
+                  {propertyData.details?.style}
                 </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Buyers Table with Tabs */}
+
+        {/* Buyers Table with Tabs - now using real API data */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -297,7 +352,7 @@ export default function ValuationResult() {
             >
               <div className="flex items-center justify-center gap-2">
                 <Award size={16} />
-                Top Matches ({propertyData.buyerMatch.topBuyers.length})
+                Top Matches ({buyers.length > 3 ? 3 : buyers.length})
               </div>
             </button>
             <button
@@ -309,88 +364,72 @@ export default function ValuationResult() {
             >
               <div className="flex items-center justify-center gap-2">
                 <Users size={16} />
-                All Buyers ({propertyData.buyerMatch.totalBuyers})
+                All Buyers ({buyers.length})
               </div>
             </button>
           </div>
 
           <div className="overflow-x-auto buyer-table-scroll" style={{ maxHeight: '340px', minHeight: '120px', overflowY: 'auto' }}>
-            <table className="w-full border-collapse">
-              <thead className="bg-[var(--tertiary-gray-bg)] sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Rank</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buyer</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Fit Score</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Offer</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Close Time</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-[var(--secondary-gray-bg)] divide-y divide-[var(--quaternary-gray-bg)]">
-                {(activeTab === 'top' ? propertyData.buyerMatch.topBuyers : [...propertyData.buyerMatch.topBuyers, ...propertyData.buyerMatch.allBuyers]).map((buyer, index) => (
-                  <motion.tr
-                    key={buyer.id}
-                    variants={staggerItem}
-                    initial="initial"
-                    animate="animate"
-                    className={`hover:bg-[var(--tertiary-gray-bg)] transition-colors ${index === 0 && activeTab === 'top'
-                      ? 'bg-[linear-gradient(to_right,rgba(247,200,68,0.2),rgba(247,200,68,0.1))] border-l-4 border-[var(--gold)]'
-                      : ''
-                      }`}
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index === 0 ? 'bg-[var(--gold)] text-[var(--grey)]' :
-                        index === 1 ? 'bg-[var(--secondary-gray-text)] text-white' :
-                          index === 2 ? 'bg-[var(--quaternary-gray-bg)] text-white' : 'bg-[var(--tertiary-gray-bg)] text-[var(--primary-gray-text)]'
-                        }`}>
-                        {index + 1}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div>
-                        <div className={`text-sm font-medium ${index === 0 && activeTab === 'top' ? 'text-[var(--gold)]' : 'text-white'
-                          }`}>Buyer {index + 1}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className={`text-sm font-bold ${buyer.fitScore >= 90 ? 'text-[var(--green)]' :
-                          buyer.fitScore >= 85 ? 'text-[var(--gold)]' :
-                            'text-[var(--primary-gray-text)]'
-                          }`}>
-                          {buyer.fitScore}%
-                        </div>
-                        {index === 0 && activeTab === 'top' && (
-                          <Star size={12} className="text-[var(--gold)] fill-current" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm font-semibold ${index === 0 && activeTab === 'top' ? 'text-[var(--gold)]' : 'text-[var(--green)]'
-                        }`}>{buyer.maxPrice}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-sm text-[var(--primary-gray-text)]">
-                        <Clock size={12} className="text-[var(--secondary-gray-text)]" />
-                        {buyer.closeTime}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${index === 0 && activeTab === 'top'
-                        ? 'bg-[var(--gold)/20] text-[var(--gold)]'
-                        : 'bg-[var(--green)/20] text-[var(--green)]'
-                        }`}>
-                        {buyer.status}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+            {buyersLoading ? (
+              <div className="text-center text-white py-8">Loading buyers...</div>
+            ) : buyersError ? (
+              <div className="text-center text-red-500 py-8">{buyersError}</div>
+            ) : buyers.length === 0 ? (
+              <div className="text-center text-[var(--mafia-red)] font-medium py-8">No buyers found.</div>
+            ) : (
+              <table className="w-full border-collapse">
+                <thead className="bg-[var(--tertiary-gray-bg)] sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">#</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Phone</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">City</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Country</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buying Locations</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Lot Size Min</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Lot Size Max</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Price Per</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Must Be Cleared</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Zoning Types</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Access Required</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Utilities</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buy On Market</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Budget Min</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Budget Max</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Timeline</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-[var(--secondary-gray-bg)] divide-y divide-[var(--quaternary-gray-bg)]">
+                  {(activeTab === 'top' ? buyers.slice(0, 3) : buyers).map((buyer, index) => (
+                    <tr key={buyer.id || index} className="hover:bg-[var(--tertiary-gray-bg)] transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap font-bold">{index + 1}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-white">{formatValue(buyer.name)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.email)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.phone)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.city)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.country)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.buyingLocations)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.lotSizeMin)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.lotSizeMax)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.pricePer)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.mustBeCleared)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.zoningTypes)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.accessRequired)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatList(buyer.utilities)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.buyOnMarket)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.budgetMin)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.budgetMax)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{formatValue(buyer.timeline)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </motion.div>
 
-        {/* Market Analysis & Investment Metrics */}
+        {/* Market Analysis & Investment Metrics (API does not provide, so show description and status) */}
         <motion.div
           variants={gridContainer}
           initial="initial"
@@ -411,35 +450,17 @@ export default function ValuationResult() {
               </motion.div>
               <h3 className="text-xl font-semibold text-white">Market Analysis</h3>
             </div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-              className="space-y-4"
-            >
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Market Trend</span>
-                <span className="text-green-400 font-semibold">{propertyData.marketAnalysis.marketTrend}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Days on Market</span>
-                <span className="text-white font-semibold">{propertyData.marketAnalysis.daysOnMarket}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Comparable Sales</span>
-                <span className="text-white font-semibold">{propertyData.marketAnalysis.comparableSales}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Market Activity</span>
-                <span className="text-green-400 font-semibold">{propertyData.marketAnalysis.marketActivity}</span>
-              </motion.div>
-            </motion.div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Status</span>
+                <span className="text-green-400 font-semibold">{propertyData.status}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Description</span>
+                <span className="text-white font-semibold truncate max-w-xs">{formatValue(propertyData.details?.description)}</span>
+              </div>
+            </div>
           </motion.div>
-
           {/* Investment Metrics */}
           <motion.div
             variants={gridItem}
@@ -454,37 +475,24 @@ export default function ValuationResult() {
               </motion.div>
               <h3 className="text-xl font-semibold text-white">Investment Metrics</h3>
             </div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-              className="space-y-4"
-            >
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Cap Rate</span>
-                <span className="text-green-400 font-semibold">{propertyData.investmentMetrics.capRate}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Cash on Cash</span>
-                <span className="text-green-400 font-semibold">{propertyData.investmentMetrics.cashOnCash}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Appreciation</span>
-                <span className="text-green-400 font-semibold">{propertyData.investmentMetrics.appreciation}</span>
-              </motion.div>
-
-              <motion.div variants={staggerItem} className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Risk Level</span>
-                <span className="text-orange-400 font-semibold">{propertyData.investmentMetrics.riskLevel}</span>
-              </motion.div>
-            </motion.div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Taxes</span>
+                <span className="text-green-400 font-semibold">${formatValue(propertyData.taxes?.annualAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Assessment Year</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.taxes?.assessmentYear)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Coop Compensation</span>
+                <span className="text-green-400 font-semibold">{formatValue(propertyData.coopCompensation)}</span>
+              </div>
+            </div>
           </motion.div>
         </motion.div>
 
-        {/* Property Features & Comparable Properties */}
+        {/* Property Features & Rooms */}
         <motion.div
           variants={gridContainer}
           initial="initial"
@@ -505,27 +513,34 @@ export default function ValuationResult() {
               </motion.div>
               <h3 className="text-xl font-semibold text-white">Property Features</h3>
             </div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-              className="space-y-3"
-            >
-              {propertyData.propertyFeatures.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl"
-                >
-                  <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                  <span className="text-[var(--primary-gray-text)]">{feature}</span>
-                </motion.div>
-              ))}
-            </motion.div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Air Conditioning: {formatValue(propertyData.details?.airConditioning)}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Basement: {formatValue(propertyData.details?.basement1)} {formatValue(propertyData.details?.basement2)}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Garage: {formatValue(propertyData.details?.garage)}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Heating: {formatValue(propertyData.details?.heating)}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Swimming Pool: {formatValue(propertyData.details?.swimmingPool)}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                <span className="text-[var(--primary-gray-text)]">Water Source: {formatValue(propertyData.details?.waterSource)}</span>
+              </div>
+            </div>
           </motion.div>
-
-          {/* Comparable Properties */}
+          {/* Rooms */}
           <motion.div
             variants={gridItem}
             className="bg-[var(--secondary-gray-bg)] rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm border border-[var(--tertiary-gray-bg)]"
@@ -537,36 +552,26 @@ export default function ValuationResult() {
               >
                 <Users size={18} className="text-white" />
               </motion.div>
-              <h3 className="text-xl font-semibold text-white">Comparable Properties</h3>
+              <h3 className="text-xl font-semibold text-white">Rooms</h3>
             </div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-              className="space-y-4"
-            >
-              {propertyData.comparableProperties.map((comp, index) => (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  className="p-4 bg-[var(--tertiary-gray-bg)] rounded-xl border border-[var(--quaternary-gray-bg)]"
-                >
+            <div className="space-y-4">
+              {propertyData.rooms && propertyData.rooms.length > 0 ? propertyData.rooms.slice(0, 6).map((room, idx) => (
+                <div key={idx} className="p-4 bg-[var(--tertiary-gray-bg)] rounded-xl border border-[var(--quaternary-gray-bg)]">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-white">{comp.address}</h4>
-                    <span className="text-orange-500 font-bold">{comp.price}</span>
+                    <h4 className="font-semibold text-white">{formatValue(room.description)}</h4>
+                    <span className="text-orange-500 font-bold">{formatValue(room.length)} x {formatValue(room.width)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[var(--secondary-gray-text)]">
-                    <span>{comp.size}</span>
-                    <span>Sold: {new Date(comp.soldDate).toLocaleDateString()}</span>
+                    <span>{formatValue(room.level)}</span>
+                    <span>{formatValue(room.features)}</span>
                   </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                </div>
+              )) : <div className="text-[var(--secondary-gray-text)]">No room data available.</div>}
+            </div>
           </motion.div>
         </motion.div>
 
-        {/* Aerial View */}
+        {/* Aerial View (show map if available) */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -579,14 +584,22 @@ export default function ValuationResult() {
             <p className="text-[var(--secondary-gray-text)] text-sm sm:text-base">Satellite imagery and property boundaries</p>
           </div>
           <div className="p-4 sm:p-6 lg:p-8">
-            <img
-              src={propertyData.aerialImage}
-              alt="Aerial View"
-              className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-xl"
-            />
+            {propertyData.map?.latitude && propertyData.map?.longitude ? (
+              <iframe
+                title="Map"
+                width="100%"
+                height="350"
+                style={{ border: 0, borderRadius: '1rem' }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://www.google.com/maps?q=${propertyData.map.latitude},${propertyData.map.longitude}&z=16&output=embed`}
+              ></iframe>
+            ) : (
+              <div className="text-[var(--secondary-gray-text)]">No map data available.</div>
+            )}
           </div>
         </motion.div>
       </div>
     </div>
   )
-} 
+}
