@@ -355,50 +355,6 @@ const deleteSubadmin = async (req, res) => {
   }
 };
 
-// Reset user password
-const resetSubadminPassword = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const password = generatePassword();
-
-    // Update password in Firebase Auth
-    await admin.auth().updateUser(id, {
-      password: password,
-    });
-
-    // Get user data to send email
-    const userDoc = await db.collection("users").doc(id).get();
-    if (!userDoc.exists) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    const userData = userDoc.data();
-    const emailSent = await sendSubadminCredentials(
-      userData.email,
-      password,
-      userData.name,
-      userData.role
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Password reset successfully",
-      data: {
-        emailSent: emailSent,
-      },
-    });
-  } catch (error) {
-    console.error("Error resetting password:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to reset password",
-      error: error.message,
-    });
-  }
-};
 
 module.exports = {
   addSubadmin,
@@ -406,6 +362,5 @@ module.exports = {
   getSubadminById,
   updateSubadmin,
   deleteSubadmin,
-  resetSubadminPassword,
   sendSubadminCredentials,
 };

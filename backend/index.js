@@ -5,7 +5,6 @@ const path = require("path");
 const authRoutes = require("./routers/authroutes");
 const subadminRoutes = require("./routers/subadminRoutes");
 const buyerRoutes = require("./routers/buyerRoutes");
-const userRoutes = require("./routers/userRoutes");
 const { admin } = require("./utils/firebase");
 const scoutRoutes = require("./routers/scoutRoutes");
 
@@ -31,7 +30,6 @@ app.use(cors(corOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/subadmin", subadminRoutes);
 app.use("/api/buyers", buyerRoutes);
-app.use("/api/users", userRoutes);
 app.use("/api/scout", scoutRoutes);
 
 // Serve static files (if needed)

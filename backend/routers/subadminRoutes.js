@@ -6,7 +6,6 @@ const {
   getSubadminById,
   updateSubadmin,
   deleteSubadmin,
-  resetSubadminPassword,
 } = require("../controllers/subadminController");
 
 // Import the email function
@@ -78,6 +77,5 @@ router.get("/all", getAllSubadmins);
 router.get("/:id", getSubadminById);
 router.put("/:id", updateSubadmin);
 router.delete("/:id", deleteSubadmin);
-router.post("/:id/reset-password", resetSubadminPassword);
 
 module.exports = router; 
