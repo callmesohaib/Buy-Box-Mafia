@@ -11,6 +11,7 @@ export const handleLogout = async (navigate) => {
     localStorage.removeItem("name");
     localStorage.removeItem("email");
     localStorage.removeItem("subadminId");
+    localStorage.removeItem("token");
     if (navigate) {
       navigate("/login");
       toast.success("Logged out successfully");

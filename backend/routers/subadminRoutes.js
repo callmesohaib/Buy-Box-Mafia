@@ -58,9 +58,7 @@ const requireAdmin = async (req, res, next) => {
 };
 
 // Health check endpoint
-router.get("/health", (req, res) => {
-  res.json({ success: true, message: "Subadmin API is running" });
-});
+
 
 // Test email endpoint (remove in production)
 router.post("/test-email", async (req, res) => {

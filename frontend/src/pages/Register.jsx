@@ -22,7 +22,7 @@ const Register = () => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -42,11 +42,39 @@ const Register = () => {
     setErrors({});
     setIsLoading(true);
 
-    // Simulate registration
-    setTimeout(() => {
-      toast.success("Account created!");
+    try {
+      const res = await fetch("http://localhost:3001/api/scout/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Account created! Please check your email for credentials.");
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          password: "",
+          confirmPassword: "",
+        });
+      } else {
+        toast.error(data.message || "Registration failed");
+      }
+    } catch (err) {
+      toast.error("Registration failed. Please try again.");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -110,10 +138,10 @@ const Register = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-              className={`w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b ${errors.email
-                ? "border-b-red-500"
-                : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
-                } focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
+                className={`w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b ${errors.email
+                  ? "border-b-red-500"
+                  : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
+                  } focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="john@example.com"
               />
             </div>
@@ -133,7 +161,7 @@ const Register = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-              className="w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)] focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200"
+                className="w-full pl-8 pr-2 py-2 bg-transparent border-0 border-b border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)] focus:ring-0 focus:border-b-red-500 text-base md:text-sm text-white placeholder-[var(--placeholder-gray)] transition-all duration-200"
                 placeholder="+1 555 123 4567"
               />
             </div>

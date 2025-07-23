@@ -4,8 +4,8 @@ const authController = require('../controllers/authController');
 const { errorHandler } = require('../middlewares/authmiddleware');
 const { ROLES } = require('../utils/constants');
 
-// Admin login route
-router.post('/admin/login', authController.login);
+// Unified login route for all roles
+router.post('/login', authController.login);
 
 // Protected admin route
 router.get(

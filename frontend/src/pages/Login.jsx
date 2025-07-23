@@ -8,7 +8,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toast } from 'react-hot-toast';
-import { auth, signInWithEmailAndPassword } from "../firebase/client";
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -21,20 +21,8 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // Check existing auth state
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        user.getIdTokenResult().then((idTokenResult) => {
-          const role = idTokenResult.claims.role || "scout";
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("role", role);
-          redirectBasedOnRole(role);
-        });
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+
+  // Remove Firebase auth state check for scout login
 
   const redirectBasedOnRole = (role) => {
     switch (role) {
@@ -64,60 +52,34 @@ export default function Login() {
     e.preventDefault();
     if (!validateForm()) return;
     setIsLoading(true);
-
     try {
-      // Sign in with Firebase client SDK for password verification
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      // Force refresh the ID token to get latest custom claims
-      await userCredential.user.getIdToken(true);
-      const idTokenResult = await userCredential.user.getIdTokenResult();
-      const role = idTokenResult.claims.role || "scout";
-
-      // Store login state
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("role", role);
-
-      // Fetch user profile and store name/email
-      try {
-        const userProfileRes = await fetch(
-          `http://localhost:3001/api/users/by-email/${formData.email}`
-        );
-        if (userProfileRes.ok) {
-          const { user } = await userProfileRes.json();
-          localStorage.setItem("name", user.name);
-          localStorage.setItem("email", user.email);
-          localStorage.setItem("uid", user.uid);
-          if (user.id) localStorage.setItem("subadminId", user.id);
-        }
-      } catch (e) {
-        /* ignore profile fetch errors for now */
+      const res = await fetch("http://localhost:3001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", data.user.role);
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("name", data.user.name);
+        localStorage.setItem("email", data.user.email);
+        localStorage.setItem("uid", data.user.id || data.user.uid);
+        toast.success("Login successful!");
+        redirectBasedOnRole(data.user.role);
+      } else {
+        toast.error(data.message || "Login failed. Please try again.");
+        setErrors({ general: data.message || "Login failed. Please try again." });
       }
-
-      // Redirect based on role
-      redirectBasedOnRole(role);
-      toast.success("Login successful!");
     } catch (error) {
-      console.error("Login error:", error);
-      let errorMessage = "Login failed. Please try again.";
-
-      if (error.code === "auth/wrong-password") {
-        errorMessage = "Invalid password. Please try again.";
-      } else if (error.code === "auth/user-not-found") {
-        errorMessage = "No user found with this email.";
-      } else if (error.code === "auth/invalid-credential") {
-        errorMessage = "Invalid email or password. Please try again.";
-      }
-
-      toast.error(errorMessage);
-      setErrors({ general: errorMessage });
-    } finally {
-      setIsLoading(false);
+      toast.error("Login failed. Please try again.");
+      setErrors({ general: "Login failed. Please try again." });
     }
+    setIsLoading(false);
   };
 
   const validateForm = () => {
@@ -159,6 +121,7 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
           <div>
             <label className="block text-sm font-medium mb-2 text-[var(--primary-gray-text)]">
               Email

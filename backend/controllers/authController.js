@@ -1,4 +1,7 @@
-const { admin } = require("../utils/firebase");
+
+const { admin, db } = require("../utils/firebase");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const {
   ROLES,
   ERROR_MESSAGES,
@@ -8,35 +11,38 @@ const {
 const authController = {
   login: async (req, res, next) => {
     const { email, password } = req.body;
-
     try {
-      // 1. Verify user exists
-      const user = await admin.auth().getUserByEmail(email);
+      // 1. Find user in Firestore
+      const userSnap = await db.collection("users").where("email", "==", email).get();
+      if (userSnap.empty) {
+        return res.status(401).json({ success: false, message: "Invalid credentials" });
+      }
+      const userDoc = userSnap.docs[0];
+      const user = userDoc.data();
 
-      // 2. Verify password (using Firebase Auth)
-      // Note: This requires client-side Firebase Auth or a different approach
-      // (See important note below about password verification)
+      // 2. Verify password using bcrypt
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: "Invalid credentials" });
+      }
 
-      // 3. Get user role from custom claims
-      const userRecord = await admin.auth().getUser(user.uid);
-      const customClaims = userRecord.customClaims || {};
-      
-      // Determine role (default to 'scout' if no role specified)
-      const role = customClaims.role === ROLES.ADMIN ? ROLES.ADMIN : 
-                  customClaims.role === ROLES.SUBADMIN ? ROLES.SUBADMIN : 
-                  ROLES.SCOUT;
-
-      // 4. Create custom token with role information
-      const token = await admin.auth().createCustomToken(user.uid, { role });
+      // 3. Generate JWT (or Firebase custom token if you want)
+      // We'll use JWT for simplicity
+      const token = jwt.sign(
+        { id: userDoc.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
 
       res.json({
         success: true,
-        message: SUCCESS_MESSAGES.LOGIN_SUCCESS,
+        message: SUCCESS_MESSAGES.LOGIN_SUCCESS || "Login successful",
         token,
         user: {
-          uid: user.uid,
+          id: userDoc.id,
+          name: user.name,
           email: user.email,
-          role: role
+          role: user.role,
         },
       });
     } catch (error) {
