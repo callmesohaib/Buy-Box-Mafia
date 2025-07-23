@@ -1,5 +1,4 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const { db } = require("../utils/firebase");
 const { ROLES } = require("../utils/constants");
 const nodemailer = require("nodemailer");
