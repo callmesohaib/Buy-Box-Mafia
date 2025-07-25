@@ -1,8 +1,31 @@
 import { motion, AnimatePresence } from "framer-motion"
+import { useEffect } from "react";
 import { User, Building, MapPin, DollarSign, FileCheck, Mail, Phone, AlertCircle } from "lucide-react"
 import { staggerContainer, staggerItem, inputFocusVariants, errorMessageVariants } from "../../animations/animation"
+import { scoutService } from "../../services/scoutService";
 
 export default function ContractForm({ formData, setFormData, errors, setErrors }) {
+  useEffect(() => {
+
+    if (!formData.scoutName || !formData.scoutEmail) {
+      const email = localStorage.getItem("email");
+      if (!email) return;
+      scoutService.getAllScouts().then(scouts => {
+        const scout = Array.isArray(scouts)
+          ? scouts.find(s => s.email === email)
+          : null;
+        if (scout) {
+          setFormData(prev => ({
+            ...prev,
+            scoutName: scout.name || prev.scoutName,
+            scoutEmail: scout.email || prev.scoutEmail,
+            scoutPhone: scout.phone || prev.scoutPhone,
+            scoutCompany: scout.company || prev.scoutCompany,
+          }));
+        }
+      }).catch((err) => { console.error("Error fetching scouts:", err); });
+    }
+  }, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -54,10 +77,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="scoutName"
-                value={formData.scoutName}
+                value={formData.scoutName || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Enter scout's name"
+                readOnly={!!formData.scoutName}
               />
             </motion.div>
           </div>
@@ -68,10 +92,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="email"
                 name="scoutEmail"
-                value={formData.scoutEmail}
+                value={formData.scoutEmail || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="scout@example.com"
+                readOnly={!!formData.scoutEmail}
               />
             </motion.div>
           </div>
@@ -82,10 +107,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="tel"
                 name="scoutPhone"
-                value={formData.scoutPhone}
+                value={formData.scoutPhone || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="+1 (555) 123-4567"
+                readOnly={false}
               />
             </motion.div>
           </div>
@@ -96,10 +122,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="scoutCompany"
-                value={formData.scoutCompany}
+                value={formData.scoutCompany || "Buy Box Mafia"}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Company name"
+                readOnly={!!formData.scoutCompany}
               />
             </motion.div>
           </div>
@@ -120,7 +147,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="sellerName"
-                value={formData.sellerName}
+                value={formData.sellerName || ""}
                 onChange={handleInputChange}
                 className={inputBase + ` pl-10 ${errors.sellerName ? 'border-[var(--mafia-red)] bg-[var(--mafia-red)]/10' : ''}`}
                 placeholder="Enter seller's full name"
@@ -148,7 +175,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="email"
                 name="sellerEmail"
-                value={formData.sellerEmail}
+                value={formData.sellerEmail || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="seller@example.com"
@@ -162,7 +189,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="tel"
                 name="sellerPhone"
-                value={formData.sellerPhone}
+                value={formData.sellerPhone || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="+1 (555) 123-4567"
@@ -176,7 +203,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="sellerAddress"
-                value={formData.sellerAddress}
+                value={formData.sellerAddress || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Enter seller's address"
@@ -200,10 +227,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="propertyAddress"
-                value={formData.propertyAddress}
+                value={formData.propertyAddress || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Enter property address"
+                readOnly={!!formData.propertyAddress}
               />
             </motion.div>
           </div>
@@ -212,10 +240,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="text"
               name="propertyType"
-              value={formData.propertyType}
+              value={formData.propertyType || ""}
               onChange={handleInputChange}
               className={inputBase}
-              placeholder="e.g. Single Family"
+              placeholder="e.g. Sale"
+              readOnly={!!formData.propertyType}
             />
           </div>
           <div>
@@ -223,10 +252,21 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="text"
               name="propertySize"
-              value={formData.propertySize}
+              value={formData.propertySize || ""}
               onChange={handleInputChange}
               className={inputBase}
               placeholder="e.g. 2,000 sqft"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>APN</label>
+            <input
+              type="text"
+              name="apn"
+              value={formData.apn || ""}
+              onChange={handleInputChange}
+              className={inputBase}
+              placeholder="Enter APN (Assessor's Parcel Number)"
             />
           </div>
           <div>
@@ -234,10 +274,11 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="text"
               name="propertyZoning"
-              value={formData.propertyZoning}
+              value={formData.propertyClass || ""}
               onChange={handleInputChange}
               className={inputBase}
               placeholder="e.g. Residential"
+              readOnly={!!formData.propertyZoning}
             />
           </div>
         </div>
@@ -255,7 +296,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="number"
               name="offerPrice"
-              value={formData.offerPrice}
+              value={formData.propertyPrice || ""}
               onChange={handleInputChange}
               className={inputBase + (errors.offerPrice ? ' border-[var(--mafia-red)] bg-[var(--mafia-red)]/10' : '')}
               placeholder="Enter offer price"
@@ -280,7 +321,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="number"
               name="earnestMoney"
-              value={formData.earnestMoney}
+              value={formData.earnestMoney || ""}
               onChange={handleInputChange}
               className={inputBase}
               placeholder="Enter earnest money amount"
@@ -291,7 +332,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="date"
               name="closingDate"
-              value={formData.closingDate}
+              value={formData.closingDate || ""}
               onChange={handleInputChange}
               className={inputBase}
             />
@@ -300,7 +341,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Financing Type</label>
             <select
               name="financingType"
-              value={formData.financingType}
+              value={formData.financingType || ""}
               onChange={handleInputChange}
               className={selectClass}
             >
@@ -325,7 +366,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Inspection Period</label>
             <select
               name="inspectionPeriod"
-              value={formData.inspectionPeriod}
+              value={formData.inspectionPeriod || ""}
               onChange={handleInputChange}
               className={selectClass}
             >
@@ -340,7 +381,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Title Insurance</label>
             <select
               name="titleInsurance"
-              value={formData.titleInsurance}
+              value={formData.titleInsurance || ""}
               onChange={handleInputChange}
               className={selectClass}
             >
@@ -353,7 +394,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Survey Required</label>
             <select
               name="surveyRequired"
-              value={formData.surveyRequired}
+              value={formData.surveyRequired || ""}
               onChange={handleInputChange}
               className={selectClass}
             >
@@ -366,7 +407,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Additional Terms</label>
             <textarea
               name="additionalTerms"
-              value={formData.additionalTerms}
+              value={formData.additionalTerms || ""}
               onChange={handleInputChange}
               rows={3}
               className={textareaClass}

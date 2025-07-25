@@ -177,7 +177,8 @@ export default function ValuationResult() {
   }, [propertyData]);
 
   const handlePrepareDealPackage = () => {
-    navigate("/contract/22")
+
+    navigate(`/contract/${mlsNumber}`)
   }
 
   // Show loading spinner until BOTH property and buyers are loaded
@@ -474,11 +475,11 @@ export default function ValuationResult() {
                         className={`hover:bg-[var(--tertiary-gray-bg)] transition-colors ${index === 0 && activeTab === 'top'
                           ? 'bg-[linear-gradient(to_right,rgba(247,200,68,0.2),rgba(247,200,68,0.1))] border-l-4 border-[var(--gold)]'
                           : ''
-                        }`}
+                          }`}
                       >
                         <td className="px-4 py-3 whitespace-nowrap font-bold">{rankCircle}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-white">Buyer {index + 1}</td>
-                        <td className="px-4 py-3 whitespace-nowrap font-bold" style={{color: buyer.matchPercent >= 90 ? '#22c55e' : buyer.matchPercent >= 80 ? '#f59e42' : '#eab308'}}>{buyer.matchPercent}%</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-bold" style={{ color: buyer.matchPercent >= 90 ? '#22c55e' : buyer.matchPercent >= 80 ? '#f59e42' : '#eab308' }}>{buyer.matchPercent}%</td>
                         <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatBudget(buyer.budgetMin, buyer.budgetMax)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-gray-200 flex items-center gap-1">{formatValue(buyer.timeline)}</td>
                       </tr>

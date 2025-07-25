@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { fadeInDown, fadeInUp, buttonHover } from "../animations/animation"
@@ -10,64 +11,124 @@ import SignatureStep from "../components/contract/SignatureStep"
 import SubmitStep from "../components/contract/SubmitStep"
 
 export default function ContractPreparation() {
-  const { dealId } = useParams()
-  const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const [contractData, setContractData] = useState({
-    // Scout Information
-    scoutName: "John Smith",
-    scoutEmail: "john.smith@buyboxmafia.com",
-    scoutPhone: "+1 (555) 123-4567",
-    scoutCompany: "Buy Box Mafia",
-    // Seller Information
-    sellerName: "",
-    sellerEmail: "",
-    sellerPhone: "",
-    sellerAddress: "",
-    // Property Information
-    propertyAddress: "123 Main Street, Austin, TX 78701",
-    propertyType: "Residential Land",
-    propertySize: "2.5 acres",
-    propertyZoning: "Residential",
-    // Offer Details
-    offerPrice: "",
-    earnestMoney: "",
-    closingDate: "",
-    financingType: "Cash",
-    // Terms and Conditions
-    inspectionPeriod: "14 days",
-    titleInsurance: "Yes",
-    surveyRequired: "Yes",
-    additionalTerms: ""
-  })
-  const [errors, setErrors] = useState({})
+  const { dealId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const initialStep = parseInt(query.get('step')) || 0;
+  const [currentStep, setCurrentStepState] = useState(initialStep);
+  const [isLoading, setIsLoading] = useState(false);
+  const initialContractData = (location.state && location.state.contractData) ? location.state.contractData : {};
+  const [contractData, setContractData] = useState(initialContractData);
+  const [errors, setErrors] = useState({});
+  const mlsNumber = dealId;
+  console.log("MLS Number:", mlsNumber);
+  const [propertyData, setPropertyData] = useState(null);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+    if (!mlsNumber) return;
+    setIsLoading(true);
+    setPropertyData(null);
+    fetch(`https://api.repliers.io/listings/${mlsNumber}`, {
+      headers: {
+        'REPLIERS-API-KEY': '41MCTXQRjF5HUStcQkFuNfYhGU56Je',
+        'accept': 'application/json',
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch property');
+        return res.json();
+      })
+      .then((data) => {
+
+        setPropertyData(data);
+        console.log("Fetched property data:", data);
+        setIsLoading(false);
+      })
+      .catch((e) => {
+        setPropertyData(null);
+        setIsLoading(false);
+      });
+  }, [mlsNumber]);
+
+
+  // Update contractData state when propertyData changes
+  useEffect(() => {
+    if (propertyData) {
+      setContractData(prev => ({
+        ...prev,
+        mlsNumber: propertyData?.mlsNumber || '',
+        propertyAddress: propertyData?.address
+          ? `${propertyData.address.streetNumber || ''} ${propertyData.address.streetName || ''} ${propertyData.address.streetSuffix || ''}, ${propertyData.address.city || ''}, ${propertyData.address.state || ''} ${propertyData.address.zip || ''}`.replace(/ +/g, ' ').trim()
+          : '',
+        propertyCity: propertyData?.address?.city || '',
+        propertyState: propertyData?.address?.area || '',
+        propertyCountry: propertyData?.address?.country || '',
+        propertyPrice: propertyData?.originalPrice || '',
+        propertyType: propertyData?.type || '',
+        propertyZoning: propertyData?.zoning || '',
+        propertyClass: propertyData?.class || '',
+        listPrice: propertyData?.listPrice || '',
+        listDate: propertyData?.listDate || '',
+        status: propertyData?.status || '',
+      }));
+    }
+  }, [propertyData]);
+
+  // Update URL and pass contractData as state when step changes
+  const setCurrentStep = (step, data = contractData) => {
+    setCurrentStepState(step);
+    const params = new URLSearchParams(location.search);
+    params.set('step', step);
+    navigate({ search: params.toString() }, { replace: true, state: { contractData: data } });
+  };
+
+
+
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [currentStep])
+    // Only update state if not initial mount
+    if (currentStep !== initialStep) {
+      setCurrentStep(currentStep, contractData);
+    }
+    // eslint-disable-next-line
+  }, [contractData]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
+  // Keep state in sync with URL if user changes it manually
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlStep = parseInt(params.get('step')) || 0;
+    if (urlStep !== currentStep) {
+      setCurrentStepState(urlStep);
+    }
+    // eslint-disable-next-line
+  }, [location.search]);
 
   const nextStep = () => {
     if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
+      setCurrentStep(currentStep + 1, contractData);
     }
-  }
+  };
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1)
+      setCurrentStep(currentStep - 1, contractData);
     }
-  }
+  };
 
   const handleSubmit = async () => {
     setIsLoading(true)
     setTimeout(() => {
       setIsLoading(false)
-      navigate("/submit/22")
+      navigate("/submit/22", { state: { contractData } })
     }, 3000)
   }
 
@@ -83,7 +144,7 @@ export default function ContractPreparation() {
           />
         )
       case 1:
-        return <ContractPreview contractData={contractData} dealId={dealId} />
+        return <ContractPreview contractData={contractData} formData={contractData} dealId={dealId} />
       case 2:
         return <SignatureStep />
       case 3:
@@ -170,4 +231,4 @@ export default function ContractPreparation() {
       </div>
     </motion.div>
   )
-} 
+}

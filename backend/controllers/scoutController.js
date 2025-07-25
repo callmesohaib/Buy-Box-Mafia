@@ -116,6 +116,27 @@ const registerScout = async (req, res) => {
 };
 
 
+// Get All Scouts
+const getScoutDetails = async (req, res) => {
+  try {
+    // Use lowercase 'scout' to match Firestore data
+    const userQuery = await db.collection("users").where("role", "==", "scout").get();
+    if (userQuery.empty) {
+      return res.status(404).json({ success: false, message: "No scouts found" });
+    }
+    const scouts = userQuery.docs.map(doc => {
+      const data = doc.data();
+      delete data.password;
+      return data;
+    });
+    res.json({ success: true, data: scouts });
+  } catch (error) {
+    console.error("Error fetching scouts:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch scouts", error: error.message });
+  }
+};
+
 module.exports = {
   registerScout,
+  getScoutDetails,
 };
