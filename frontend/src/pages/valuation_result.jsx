@@ -421,7 +421,7 @@ export default function ValuationResult() {
             >
               <div className="flex items-center justify-center gap-2">
                 <Award size={16} />
-                Top Matches ({matchedBuyers.length > 3 ? 3 : matchedBuyers.length})
+                Top Match ({matchedBuyers.length > 0 ? 1 : 0})
               </div>
             </button>
             <button
@@ -457,7 +457,7 @@ export default function ValuationResult() {
                   </tr>
                 </thead>
                 <tbody className="bg-[var(--secondary-gray-bg)] divide-y divide-[var(--quaternary-gray-bg)]">
-                  {(activeTab === 'top' ? matchedBuyers.slice(0, 3) : matchedBuyers).map((buyer, index) => {
+                  {(activeTab === 'top' ? matchedBuyers.slice(0, 1) : matchedBuyers).map((buyer, index) => {
                     // Gold for first, silver for second, bronze for third
                     let rankCircle;
                     if (index === 0) {
