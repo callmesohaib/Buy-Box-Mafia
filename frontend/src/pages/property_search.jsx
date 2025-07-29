@@ -35,7 +35,7 @@ export default function PropertySearch() {
   const navigate = useNavigate();
 
   async function fetchListings() {
-    setLoading(true); // <-- Set loading true before fetch
+    setLoading(true); 
     try {
       const response = await fetch(
         `${url}?listings=true&operator=AND&sortBy=updatedOnDesc&status=A`,

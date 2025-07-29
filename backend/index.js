@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const docusignRoutes = require("./routers/docusignRoutes");
 const cors = require("cors");
 const path = require("path");
 const authRoutes = require("./routers/authroutes");
@@ -10,7 +11,6 @@ const scoutRoutes = require("./routers/scoutRoutes");
 
 // Initialize Firebase
 require("./utils/firebase");
-
 const app = express();
 
 // Middleware
@@ -24,8 +24,8 @@ const corOptions = {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corOptions));
+app.use("/api/docusign", docusignRoutes);
 
-// Routes
 
 app.use("/api/auth", authRoutes);
 app.use("/api/subadmin", subadminRoutes);
