@@ -191,14 +191,18 @@ export default function ContractPreparation() {
         const pdfBase64 = doc.output('datauristring').split(',')[1];
         
         console.log("Sending to DocuSign...");
+        // Get logged-in user information from localStorage
+        const loggedInUserEmail = localStorage.getItem("email");
+        const loggedInUserName = localStorage.getItem("name");
+        
         const res = await fetch("http://localhost:3001/api/docusign/create-envelope", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             subject: "Please sign the contract",
             recipients: [{
-              email: "sohaib@gmail.com",
-              name: "Sohaib Ikram",
+              email: loggedInUserEmail, // Fallback to hardcoded email if not available
+              name: loggedInUserName, // Fallback to hardcoded name if not available
               clientUserId: "123",
               anchorString: "/sn1/"
             }],
