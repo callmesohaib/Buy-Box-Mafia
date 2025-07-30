@@ -8,7 +8,6 @@ import ProgressSteps from "../components/contract/ProgressSteps"
 import ContractForm from "../components/contract/ContractForm"
 import ContractPreview from "../components/contract/ContractPreview"
 import SignatureStep from "../components/contract/SignatureStep"
-import SubmitStep from "../components/contract/SubmitStep"
 import { generateContractPDF } from "../components/contract/ContractPreview";
 
 export default function ContractPreparation() {
@@ -40,9 +39,7 @@ export default function ContractPreparation() {
         return res.json();
       })
       .then((data) => {
-
         setPropertyData(data);
-        console.log("Fetched property data:", data);
         setIsLoading(false);
       })
       .catch((e) => {
@@ -80,6 +77,7 @@ export default function ContractPreparation() {
     if (dealId) {
       const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${dealId}`);
       const storedSigningUrl = sessionStorage.getItem(`signingUrl_${dealId}`);
+      const storedContractData = sessionStorage.getItem(`contractData_${dealId}`);
       
       if (storedEnvelopeId && storedSigningUrl) {
         setContractData(prev => ({
@@ -88,8 +86,25 @@ export default function ContractPreparation() {
           signingUrl: storedSigningUrl
         }));
       }
+      
+      // Load stored contract data if available
+      if (storedContractData) {
+        try {
+          const parsedData = JSON.parse(storedContractData);
+          setContractData(prev => ({ ...prev, ...parsedData }));
+        } catch (error) {
+          // Handle parsing error silently
+        }
+      }
     }
   }, [dealId]);
+
+  // Save contractData to session storage whenever it changes
+  useEffect(() => {
+    if (dealId && contractData) {
+      sessionStorage.setItem(`contractData_${dealId}`, JSON.stringify(contractData));
+    }
+  }, [contractData, dealId]);
 
   // Update URL and pass contractData as state when step changes
   const setCurrentStep = (step, data = contractData) => {
@@ -145,7 +160,6 @@ export default function ContractPreparation() {
         
         if (!contractData.envelopeId && !storedEnvelopeId) {
           // No envelope ID, can't regenerate - user needs to go back
-          console.log("No envelope ID found, user needs to go back to step 1");
           return;
         }
         
@@ -167,10 +181,9 @@ export default function ContractPreparation() {
             setContractData(prev => ({ ...prev, envelopeId: data.envelopeId, signingUrl: data.url }));
           } else {
             // If that fails, we need to go back to step 1
-            console.log("Could not regenerate signing URL, user needs to go back");
           }
         } catch (error) {
-          console.error("Error regenerating signing URL:", error);
+          // Handle error silently
         } finally {
           setIsLoading(false);
         }
@@ -186,11 +199,9 @@ export default function ContractPreparation() {
       setIsLoading(true);
       try {
         // Show loading message for PDF generation
-        console.log("Generating PDF...");
         const doc = generateContractPDF(contractData, contractData);
         const pdfBase64 = doc.output('datauristring').split(',')[1];
         
-        console.log("Sending to DocuSign...");
         // Get logged-in user information from localStorage
         const loggedInUserEmail = localStorage.getItem("email");
         const loggedInUserName = localStorage.getItem("name");
@@ -225,7 +236,6 @@ export default function ContractPreparation() {
           }
         }
         
-        console.log("DocuSign envelope created successfully");
         setIsLoading(false);
         
         // Store in session storage for persistence
@@ -237,7 +247,6 @@ export default function ContractPreparation() {
         return;
       } catch (e) {
         setIsLoading(false);
-        console.error("DocuSign error:", e);
         
         // Show more specific error messages
         let errorMessage = e.message || "DocuSign error";
@@ -314,7 +323,7 @@ export default function ContractPreparation() {
         return <SignatureStep envelopeId={contractData.envelopeId} signingUrl={contractData.signingUrl} />
       case 3:
         // Auto-download signed PDF if envelopeId is present
-        return <DownloadSignedPDF envelopeId={contractData.envelopeId} />
+        return <DownloadSignedPDF envelopeId={contractData.envelopeId} contractData={contractData} />
       default:
         return null
     }
@@ -407,9 +416,11 @@ export default function ContractPreparation() {
     </motion.div>
   )
 }
-
-function DownloadSignedPDF({ envelopeId }) {
+function DownloadSignedPDF({ envelopeId, contractData }) {
   const hasDownloaded = useRef(false);
+  const [isSendingToSeller, setIsSendingToSeller] = useState(false);
+  const [sendToSellerStatus, setSendToSellerStatus] = useState(null); // 'success', 'error', null
+
   useEffect(() => {
     if (!envelopeId || hasDownloaded.current) return;
     hasDownloaded.current = true;
@@ -433,12 +444,64 @@ function DownloadSignedPDF({ envelopeId }) {
         alert(e.message || 'Failed to download signed contract');
       });
   }, [envelopeId]);
+
+  const handleSendToSeller = async () => {
+    // Try multiple possible locations for seller email
+    const sellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
+    
+    if (!sellerEmail || !sellerEmail.trim()) {
+      alert('Seller email not found in contract data. Please go back and fill in the seller email.');
+      return;
+    }
+
+    if (!envelopeId) {
+      alert('No envelope ID available');
+      return;
+    }
+
+    setIsSendingToSeller(true);
+    setSendToSellerStatus(null);
+
+    try {
+      const response = await fetch('http://localhost:3001/api/docusign/send-to-seller', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          envelopeId: envelopeId,
+          sellerEmail: sellerEmail.trim(),
+          contractData: contractData
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSendToSellerStatus('success');
+      } else {
+        setSendToSellerStatus('error');
+        alert(data.error || 'Failed to send contract to seller');
+      }
+    } catch (error) {
+      setSendToSellerStatus('error');
+      alert('Network error. Please try again.');
+    } finally {
+      setIsSendingToSeller(false);
+    }
+  };
+
+  // Check if seller email exists in any form
+  const hasSellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
+
   return (
     <div className="text-center mt-12">
       <h2 className="text-xl font-bold text-white mb-4">Contract Signed!</h2>
       <p className="text-[var(--primary-gray-text)] mb-6">Your contract has been signed. The signed PDF should download automatically.</p>
+      
+      {/* Download Button */}
       <button
-        className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 transition-colors"
+        className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 transition-colors mb-4"
         onClick={() => {
           if (!envelopeId) return;
           fetch(`http://localhost:3001/api/docusign/download-signed/${envelopeId}`)
@@ -458,6 +521,43 @@ function DownloadSignedPDF({ envelopeId }) {
       >
         Download Signed Contract
       </button>
+
+      {/* Send to Seller Button */}
+      <div className="mt-4">
+        <button
+          onClick={handleSendToSeller}
+          disabled={!envelopeId || !hasSellerEmail || isSendingToSeller}
+          className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSendingToSeller ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+              Sending...
+            </>
+          ) : (
+            'Send to Seller'
+          )}
+        </button>
+        
+        {!hasSellerEmail && (
+          <p className="text-[var(--secondary-gray-text)] text-sm mt-2">
+            Seller email not found. Please go back and fill in the seller email in the form.
+          </p>
+        )}
+      </div>
+
+      {/* Status Messages */}
+      {sendToSellerStatus === 'success' && (
+        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg max-w-md mx-auto">
+          <p className="text-green-400 text-sm">Contract sent to seller successfully!</p>
+        </div>
+      )}
+      
+      {sendToSellerStatus === 'error' && (
+        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
+          <p className="text-red-400 text-sm">Failed to send contract. Please try again.</p>
+        </div>
+      )}
     </div>
   );
 }

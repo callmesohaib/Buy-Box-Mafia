@@ -1,5 +1,6 @@
 const docusign = require('docusign-esign');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 // Configuration
 const INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
@@ -277,5 +278,125 @@ exports.downloadSignedDocument = async (req, res) => {
   } catch (err) {
     console.error('Download signed PDF error:', err);
     res.status(500).json({ error: 'Failed to download signed PDF', details: err.message });
+  }
+};
+
+// Email transporter configuration (same as subadminController.js)
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+// POST /api/docusign/send-to-seller
+exports.sendToSeller = async (req, res) => {
+  try {
+    console.log('Send to seller request received:', { 
+      envelopeId: req.body.envelopeId, 
+      sellerEmail: req.body.sellerEmail,
+      hasContractData: !!req.body.contractData 
+    });
+
+    const { envelopeId, sellerEmail, contractData } = req.body;
+    if (!envelopeId || !sellerEmail) {
+      console.log('Missing required fields:', { envelopeId, sellerEmail });
+      return res.status(400).json({ error: 'Missing envelopeId or sellerEmail' });
+    }
+
+    console.log('Starting DocuSign authentication...');
+    // Download the signed PDF from DocuSign
+    const { accessToken, apiClient } = await getJWTAuthToken();
+    console.log('DocuSign authentication successful');
+    
+    apiClient.addDefaultHeader('Authorization', 'Bearer ' + accessToken);
+    const userInfo = await apiClient.getUserInfo(accessToken);
+    const accountId = userInfo.accounts[0].accountId;
+    console.log('Account ID:', accountId);
+
+    console.log('Fetching envelope documents...');
+    const envelopesApi = new docusign.EnvelopesApi(apiClient);
+    const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
+    console.log('Documents found:', docsList.envelopeDocuments?.length || 0);
+    
+    const docId = docsList.envelopeDocuments?.[0]?.documentId || '1';
+    console.log('Using document ID:', docId);
+
+    console.log('Downloading PDF...');
+    const pdfBuffer = await envelopesApi.getDocument(accountId, envelopeId, docId, null);
+    console.log('PDF downloaded, size:', pdfBuffer.length, 'bytes');
+
+    // Check email configuration
+    console.log('Email configuration:', {
+      user: process.env.EMAIL_USER,
+      hasPassword: !!process.env.EMAIL_PASSWORD,
+      to: sellerEmail
+    });
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      throw new Error('Email configuration missing. Please check EMAIL_USER and EMAIL_PASSWORD environment variables.');
+    }
+
+    // Email content (simple template)
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: sellerEmail,
+      subject: 'Signed Contract from Buy Box Mafia',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #d72638, #ff1744); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Buy Box Mafia</h1>
+            <p style="margin: 10px 0 0 0;">Signed Contract Attached</p>
+          </div>
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #333;">Dear Seller,</h2>
+            <p style="color: #666; line-height: 1.6;">
+              Please find attached the signed contract for your records.<br/>
+              If you have any questions, please contact us.
+            </p>
+          </div>
+          <div style="background: #333; color: white; padding: 20px; text-align: center;">
+            <p style="margin: 0;">© 2025 Buy Box Mafia. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: 'Signed-Contract.pdf',
+          content: pdfBuffer,
+        },
+      ],
+    };
+
+    console.log('Sending email...');
+    // Send the email
+    const emailResult = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', emailResult.messageId);
+
+    res.json({ success: true, message: 'Contract sent to seller successfully!' });
+  } catch (err) {
+    console.error('Send to seller error:', err);
+    console.error('Error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    
+    // More specific error messages
+    let errorMessage = 'Failed to send contract to seller';
+    if (err.code === 'EAUTH') {
+      errorMessage = 'Email authentication failed. Please check EMAIL_USER and EMAIL_PASSWORD.';
+    } else if (err.code === 'ECONNECTION') {
+      errorMessage = 'Email connection failed. Please check your internet connection.';
+    } else if (err.message.includes('consent_required')) {
+      errorMessage = 'DocuSign consent required. Please contact administrator.';
+    }
+    
+    res.status(500).json({ 
+      error: errorMessage, 
+      details: err.message,
+      code: err.code 
+    });
   }
 };

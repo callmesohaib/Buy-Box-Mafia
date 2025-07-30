@@ -13,5 +13,6 @@ router.get('/callback', (req, res) => {
   res.redirect('/'); // Or wherever you want to redirect after consent
 });
 router.get('/download-signed/:envelopeId', docusignController.downloadSignedDocument);
+router.post('/send-to-seller', docusignController.sendToSeller);
 
 module.exports = router;
