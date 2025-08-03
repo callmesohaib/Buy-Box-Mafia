@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { fadeInUp, scaleIn } from "../../../animations/animation"
 import { Check } from "lucide-react"
 import { toast } from 'react-hot-toast';
+import { useAuth } from "../../../store/AuthContext"
 
 const steps = [
   "Basic Info",
@@ -16,6 +17,7 @@ export default function BuyerForm({ onClose }) {
   const navigate = useNavigate()
   const { id } = useParams();
   const location = useLocation();
+  const { user } = useAuth();
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: "",
@@ -39,7 +41,7 @@ export default function BuyerForm({ onClose }) {
   const [loading, setLoading] = useState(false);
   const isEdit = Boolean(id);
 
-  // Pre-populate form if editing
+
   useEffect(() => {
     if (isEdit) {
       // Try to get buyer data from location.state first
@@ -76,7 +78,7 @@ export default function BuyerForm({ onClose }) {
   }
   const handleSubmit = async e => {
     e.preventDefault();
-    const submittedBy = localStorage.getItem('uid') || 'Unknown';
+    const submittedBy = user.id || 'Unknown';
     const payload = { ...form, submittedBy };
     try {
       let response, data;
@@ -190,7 +192,7 @@ export default function BuyerForm({ onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
-                  <input name="city" value={form.city} onChange={handleChange}  required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input name="city" value={form.city} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>

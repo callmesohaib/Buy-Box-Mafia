@@ -3,12 +3,15 @@ import { useEffect } from "react";
 import { User, Building, MapPin, DollarSign, FileCheck, Mail, Phone, AlertCircle } from "lucide-react"
 import { staggerContainer, staggerItem, inputFocusVariants, errorMessageVariants } from "../../animations/animation"
 import { scoutService } from "../../services/scoutService";
+import { useAuth } from "../../store/AuthContext";
+
 
 export default function ContractForm({ formData, setFormData, errors, setErrors }) {
+  const { user } = useAuth();
   useEffect(() => {
 
     if (!formData.scoutName || !formData.scoutEmail) {
-      const email = localStorage.getItem("email");
+      const email = user?.email;
       if (!email) return;
       scoutService.getAllScouts().then(scouts => {
         const scout = Array.isArray(scouts)

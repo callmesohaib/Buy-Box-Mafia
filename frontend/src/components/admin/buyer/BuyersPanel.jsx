@@ -13,6 +13,7 @@ import { useState, useEffect, useRef } from "react";
 import { buttonHover, fadeInUp, scaleIn } from "../../../animations/animation";
 import Papa from "papaparse";
 import { toast } from 'react-hot-toast';
+import { useAuth } from "../../../store/AuthContext";
 
 function getInitials(name) {
   return name
@@ -75,8 +76,9 @@ export default function BuyersPanel() {
   const [importError, setImportError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBuyer, setSelectedBuyer] = useState(null);
+  const { user } = useAuth();
 
-  const userRole = localStorage.getItem('role');
+  const userRole = user?.role || 'guest';
 
   const fetchBuyers = async () => {
     setLoading(true);
@@ -85,7 +87,7 @@ export default function BuyersPanel() {
     setBuyers(data);
     setLoading(false);
     if (userRole === 'subadmin') {
-      setBuyers(data.filter(buyer => buyer.submittedBy === localStorage.getItem('uid')));
+      setBuyers(data.filter(buyer => buyer.submittedBy === user.id));
     }
 
   };
@@ -178,7 +180,7 @@ export default function BuyersPanel() {
       skipEmptyLines: true,
       complete: async (results) => {
         let buyers = results.data;
-        const submittedBy = localStorage.getItem('uid') || 'Unknown';
+        const submittedBy = user?.id || 'Unknown';
         buyers = buyers.map(b => ({ ...b, submittedBy }));
         try {
           const response = await fetch("http://localhost:3001/api/buyers/import", {

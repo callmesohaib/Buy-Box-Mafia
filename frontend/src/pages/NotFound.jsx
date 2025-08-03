@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "react-router-dom"
 import { Crown } from "lucide-react"
+import { useAuth } from "../store/AuthContext";
 
 export default function NotFound() {
   const navigate = useNavigate();
-  let role = localStorage.getItem('role');
-  let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const { user, isAuthenticated } = useAuth();
+  let role = user?.role;
+  let isLoggedIn = isAuthenticated || localStorage.getItem("isLoggedIn") === "true";
 
   let buttonText = "Go to Home";
   let target = "/login";

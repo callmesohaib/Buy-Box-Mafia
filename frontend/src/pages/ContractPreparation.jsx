@@ -10,11 +10,13 @@ import ContractPreview from "../components/contract/ContractPreview"
 import SignatureStep from "../components/contract/SignatureStep"
 import { generateContractPDF } from "../components/contract/ContractPreview";
 import { addDeal } from "../services/dealsService";
+import { useAuth } from "../store/AuthContext"
 
 export default function ContractPreparation() {
   const { dealId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const query = new URLSearchParams(location.search);
   const initialStep = parseInt(query.get('step')) || 0;
   const [currentStep, setCurrentStepState] = useState(initialStep);
@@ -79,7 +81,7 @@ export default function ContractPreparation() {
       const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${dealId}`);
       const storedSigningUrl = sessionStorage.getItem(`signingUrl_${dealId}`);
       const storedContractData = sessionStorage.getItem(`contractData_${dealId}`);
-      
+
       if (storedEnvelopeId && storedSigningUrl) {
         setContractData(prev => ({
           ...prev,
@@ -87,7 +89,7 @@ export default function ContractPreparation() {
           signingUrl: storedSigningUrl
         }));
       }
-      
+
       // Load stored contract data if available
       if (storedContractData) {
         try {
@@ -152,20 +154,20 @@ export default function ContractPreparation() {
         // First check if we have the envelopeId in session storage
         const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${dealId}`);
         const storedSigningUrl = sessionStorage.getItem(`signingUrl_${dealId}`);
-        
+
         if (storedSigningUrl) {
           // Use stored signing URL
           setContractData(prev => ({ ...prev, signingUrl: storedSigningUrl }));
           return;
         }
-        
+
         if (!contractData.envelopeId && !storedEnvelopeId) {
           // No envelope ID, can't regenerate - user needs to go back
           return;
         }
-        
+
         const envelopeIdToUse = contractData.envelopeId || storedEnvelopeId;
-        
+
         setIsLoading(true);
         try {
           // Try to get the signing URL for the existing envelope
@@ -173,7 +175,7 @@ export default function ContractPreparation() {
             method: "GET",
             headers: { "Content-Type": "application/json" }
           });
-          
+
           if (res.ok) {
             const data = await res.json();
             // Store in session storage for persistence
@@ -189,7 +191,7 @@ export default function ContractPreparation() {
           setIsLoading(false);
         }
       };
-      
+
       regenerateSigningUrl();
     }
   }, [currentStep, contractData.signingUrl, contractData.envelopeId, isLoading, dealId]);
@@ -202,11 +204,10 @@ export default function ContractPreparation() {
         // Show loading message for PDF generation
         const doc = generateContractPDF(contractData, contractData);
         const pdfBase64 = doc.output('datauristring').split(',')[1];
-        
-        // Get logged-in user information from localStorage
-        const loggedInUserEmail = localStorage.getItem("email");
-        const loggedInUserName = localStorage.getItem("name");
-        
+
+        const loggedInUserEmail = user.email;
+        const loggedInUserName = user.name;
+
         const res = await fetch("http://localhost:3001/api/docusign/create-envelope", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -223,9 +224,9 @@ export default function ContractPreparation() {
             dealId: dealId // Add the dealId to the request
           })
         });
-        
+
         const data = await res.json();
-        
+
         if (!res.ok) {
           // Handle specific DocuSign authentication errors
           if (data.error && data.error.includes('authentication')) {
@@ -236,19 +237,19 @@ export default function ContractPreparation() {
             throw new Error(data.error || "Failed to initiate DocuSign");
           }
         }
-        
+
         setIsLoading(false);
-        
+
         // Store in session storage for persistence
         sessionStorage.setItem(`envelopeId_${dealId}`, data.envelopeId);
         sessionStorage.setItem(`signingUrl_${dealId}`, data.url);
-        
+
         // Go to signature step, pass envelopeId and signing URL
         setCurrentStep(currentStep + 1, { ...contractData, envelopeId: data.envelopeId, signingUrl: data.url });
         return;
       } catch (e) {
         setIsLoading(false);
-        
+
         // Show more specific error messages
         let errorMessage = e.message || "DocuSign error";
         if (errorMessage.includes("Failed to fetch")) {
@@ -256,7 +257,7 @@ export default function ContractPreparation() {
         } else if (errorMessage.includes("authentication")) {
           errorMessage = "DocuSign authentication failed. Please try again.";
         }
-        
+
         alert(errorMessage);
         return;
       }
@@ -274,13 +275,13 @@ export default function ContractPreparation() {
 
   const handleSubmit = async () => {
     setIsLoading(true)
-    
+
     try {
       // Get logged-in user information
-      const loggedInUserEmail = localStorage.getItem("email");
-      const loggedInUserName = localStorage.getItem("name");
-      const userId = localStorage.getItem("userId");
-      
+      const loggedInUserEmail = user.email;
+      const loggedInUserName = user.name;
+      const userId = user.id;
+
       // Prepare deal data for backend
       const dealData = {
         ...contractData,
@@ -290,19 +291,19 @@ export default function ContractPreparation() {
         submittedByName: loggedInUserName || 'Unknown'
       };
       console.log("dealData", dealData);
-      
+
       // Save deal to backend using service
       const result = await addDeal(dealData);
       console.log("Deal saved successfully:", result);
-      
+
       // Clear session storage when deal is completed
       sessionStorage.removeItem(`envelopeId_${dealId}`);
       sessionStorage.removeItem(`signingUrl_${dealId}`);
       sessionStorage.removeItem(`contractData_${dealId}`);
-      
+
       // Navigate to success page
       navigate("/submit/22", { state: { contractData, dealId: result.id } });
-      
+
     } catch (error) {
       console.error("Error saving deal:", error);
       alert("Failed to save deal. Please try again.");
@@ -476,7 +477,7 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
   const handleSendToSeller = async () => {
     // Try multiple possible locations for seller email
     const sellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
-    
+
     if (!sellerEmail || !sellerEmail.trim()) {
       alert('Seller email not found in contract data. Please go back and fill in the seller email.');
       return;
@@ -526,7 +527,7 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
     <div className="text-center mt-12">
       <h2 className="text-xl font-bold text-white mb-4">Contract Signed!</h2>
       <p className="text-[var(--primary-gray-text)] mb-6">Your contract has been signed. The signed PDF should download automatically.</p>
-      
+
       {/* Download Button */}
       <button
         className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 transition-colors mb-4"
@@ -566,7 +567,7 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
             'Send to Seller'
           )}
         </button>
-        
+
         {!hasSellerEmail && (
           <p className="text-[var(--secondary-gray-text)] text-sm mt-2">
             Seller email not found. Please go back and fill in the seller email in the form.
@@ -580,7 +581,7 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
           <p className="text-green-400 text-sm">Contract sent to seller successfully!</p>
         </div>
       )}
-      
+
       {sendToSellerStatus === 'error' && (
         <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
           <p className="text-red-400 text-sm">Failed to send contract. Please try again.</p>

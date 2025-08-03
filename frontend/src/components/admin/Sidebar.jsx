@@ -21,7 +21,7 @@ import { useAuth } from '../../store/AuthContext'
 
 function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
   const navigate = useNavigate();
-  const { logout , user } = useAuth();
+  const { logout, user } = useAuth();
   const userRole = user?.role;
 
   const navItems = useMemo(() => {
@@ -44,8 +44,8 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
     toast.success("Logged out successfully");
   }, [logout, navigate]);
 
-  const userName = localStorage.getItem('name') || (userRole === 'subadmin' ? 'Subadmin User' : 'Admin User');
-  const userEmail = localStorage.getItem('email') || (userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com');
+  const userName = user?.name || (userRole === 'subadmin' ? 'Subadmin User' : 'Admin User');
+  const userEmail = user?.email || (userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com');
 
   return (
     <>

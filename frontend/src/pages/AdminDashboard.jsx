@@ -4,17 +4,19 @@ import { motion } from "framer-motion"
 import { fadeInDown } from "../animations/animation"
 import Sidebar from "../components/admin/Sidebar"
 import { Outlet } from "react-router-dom"
+import { useAuth } from "../store/AuthContext"
 
 function AdminDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const role = useMemo(() => localStorage.getItem('role'), [])
+  const { user } = useAuth();
+  const role = useMemo(() => user?.role, [])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
   // Memoize the setActiveTab function to prevent Sidebar re-renders
-  const setActiveTab = useCallback(() => {}, [])
+  const setActiveTab = useCallback(() => { }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--from-bg)] to-[var(--secondary-gray-bg)] flex">
