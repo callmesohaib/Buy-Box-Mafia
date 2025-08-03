@@ -9,7 +9,7 @@
   --grey: #2f2f2f;
   --green: #1db954;
   --off-white: #f2f2f2;
-  --mafia-red-strong: #ff1744; 
+  --mafia-red-strong: #ff1744;
   --primary-gray-bg: #111827;
   --secondary-gray-bg: #1f2937;
   --tertiary-gray-bg: #374151;
@@ -26,6 +26,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: "Inter", sans-serif;
+  background-color: var(--from-bg);
 }
 
 button {

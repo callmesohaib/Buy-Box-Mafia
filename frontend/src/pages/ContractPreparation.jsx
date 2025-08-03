@@ -9,6 +9,7 @@ import ContractForm from "../components/contract/ContractForm"
 import ContractPreview from "../components/contract/ContractPreview"
 import SignatureStep from "../components/contract/SignatureStep"
 import { generateContractPDF } from "../components/contract/ContractPreview";
+import { addDeal } from "../services/dealsService";
 
 export default function ContractPreparation() {
   const { dealId } = useParams();
@@ -273,14 +274,41 @@ export default function ContractPreparation() {
 
   const handleSubmit = async () => {
     setIsLoading(true)
-    // Clear session storage when deal is completed
-    sessionStorage.removeItem(`envelopeId_${dealId}`);
-    sessionStorage.removeItem(`signingUrl_${dealId}`);
     
-    setTimeout(() => {
-      setIsLoading(false)
-      navigate("/submit/22", { state: { contractData } })
-    }, 3000)
+    try {
+      // Get logged-in user information
+      const loggedInUserEmail = localStorage.getItem("email");
+      const loggedInUserName = localStorage.getItem("name");
+      const userId = localStorage.getItem("userId");
+      
+      // Prepare deal data for backend
+      const dealData = {
+        ...contractData,
+        dealId: dealId,
+        submittedBy: userId || loggedInUserEmail,
+        dealStatus: 'completed',
+        submittedByName: loggedInUserName || 'Unknown'
+      };
+      console.log("dealData", dealData);
+      
+      // Save deal to backend using service
+      const result = await addDeal(dealData);
+      console.log("Deal saved successfully:", result);
+      
+      // Clear session storage when deal is completed
+      sessionStorage.removeItem(`envelopeId_${dealId}`);
+      sessionStorage.removeItem(`signingUrl_${dealId}`);
+      sessionStorage.removeItem(`contractData_${dealId}`);
+      
+      // Navigate to success page
+      navigate("/submit/22", { state: { contractData, dealId: result.id } });
+      
+    } catch (error) {
+      console.error("Error saving deal:", error);
+      alert("Failed to save deal. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const renderStepContent = () => {
@@ -402,7 +430,7 @@ export default function ContractPreparation() {
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                {currentStep === 1 ? "Preparing Document..." : "Loading..."}
+                {currentStep === 1 ? "Preparing Document..." : currentStep === 3 ? "Saving Deal..." : "Loading..."}
               </>
             ) : (
               <>

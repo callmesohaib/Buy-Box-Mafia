@@ -19,8 +19,8 @@ import AdminRoutes from "./components/admin/adminRoutes";
 import SubadminRoutes from "./components/admin/SubadminRoutes";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "react-hot-toast";
-import "react-toastify/dist/ReactToastify.css";
-import ProtectedRoute from "./components/protectedRoutes";
+import { AuthProvider } from "./store/AuthContext";
+import './index.css';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -28,6 +28,14 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
+}
+
+function ProtectedRoute({ children, allowedRoles }) {
+  const userRole = localStorage.getItem("role");
+  if (!allowedRoles.includes(userRole)) {
+    return <Navigate to="/property-search" replace />;
+  }
+  return children;
 }
 
 function AppContent() {
@@ -54,19 +62,16 @@ function AppContent() {
     setUserRole(localStorage.getItem("role"));
   }, [location]);
 
-  // If not logged in, only allow /login and /register
   if (!isLoggedIn) {
     if (location.pathname !== "/login" && location.pathname !== "/register") {
       return <Navigate to="/login" replace />;
     }
-    // Hide Navbar/Footer on login/register
     return (
       <main className="flex-1 bg-[#F9FAFB] font-inter min-h-screen">
         <ScrollToTop />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          {/* Redirect any other route to /login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>
@@ -138,7 +143,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+function App() {
   return (
     <>
       <Toaster
@@ -151,8 +156,12 @@ export default function App() {
         }}
       />
       <Router>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </Router>
     </>
   );
 }
+
+export default App;

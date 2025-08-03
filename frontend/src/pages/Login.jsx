@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../store/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Eye,
@@ -12,6 +13,7 @@ import { toast } from 'react-hot-toast';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, user, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -20,9 +22,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-
-  // Remove Firebase auth state check for scout login
 
   const redirectBasedOnRole = (role) => {
     switch (role) {
@@ -40,6 +39,7 @@ export default function Login() {
     }
   };
 
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -52,35 +52,19 @@ export default function Login() {
     e.preventDefault();
     if (!validateForm()) return;
     setIsLoading(true);
-    try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("role", data.user.role);
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("name", data.user.name);
-        localStorage.setItem("email", data.user.email);
-        localStorage.setItem("uid", data.user.id || data.user.uid);
-        toast.success("Login successful!");
-        redirectBasedOnRole(data.user.role);
-      } else {
-        toast.error(data.message || "Login failed. Please try again.");
-        setErrors({ general: data.message || "Login failed. Please try again." });
-      }
-    } catch (error) {
-      toast.error("Login failed. Please try again.");
+    const success = await login(formData.email, formData.password);
+    setIsLoading(false);
+    if (!success) {
       setErrors({ general: "Login failed. Please try again." });
     }
-    setIsLoading(false);
   };
+
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      redirectBasedOnRole(user.role);
+    }
+  }, [isAuthenticated, user?.role]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -136,8 +120,8 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleInputChange}
                 className={`w-full pl-10 pr-4 py-3 bg-transparent border-0 border-b ${errors.email
-                    ? "border-b-red-500"
-                    : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
+                  ? "border-b-red-500"
+                  : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
                   } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="your@email.com"
               />
@@ -158,8 +142,8 @@ export default function Login() {
                 value={formData.password}
                 onChange={handleInputChange}
                 className={`w-full pl-10 pr-10 py-3 bg-transparent border-0 border-b ${errors.password
-                    ? "border-b-red-500"
-                    : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
+                  ? "border-b-red-500"
+                  : "border-b-[var(--tertiary-gray-bg)] hover:border-b-[var(--quaternary-gray-bg)]"
                   } focus:ring-0 focus:border-b-red-500 text-white placeholder-[var(--placeholder-gray)] transition-all duration-200`}
                 placeholder="••••••••"
               />

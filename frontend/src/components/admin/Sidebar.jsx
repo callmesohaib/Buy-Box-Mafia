@@ -14,14 +14,16 @@ import {
   Menu,
 } from "lucide-react"
 import { buttonHover } from "../../animations/animation"
+
 import { toast } from 'react-toastify'
-import { handleLogout as logoutUtil } from '../../utils/logout'
+import { useAuth } from '../../store/AuthContext'
+
 
 function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) {
-  const navigate = useNavigate()
-  const userRole = localStorage.getItem('role')
+  const navigate = useNavigate();
+  const { logout , user } = useAuth();
+  const userRole = user?.role;
 
-  // Memoize navItems to prevent recreation on every render
   const navItems = useMemo(() => {
     return userRole === 'subadmin'
       ? [
@@ -33,14 +35,14 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
         { id: "buyers", label: "Buyers", icon: Users, path: "/admin/buyer" },
         { id: "subadmins", label: "Subadmins", icon: Shield, path: "/admin/subadmin" },
         { id: "analytics", label: "Analytics", icon: BarChart3, path: "/admin/analytics" },
-      ]
-  }, [userRole])
+      ];
+  }, [userRole]);
 
-  // Memoize handleLogout to prevent recreation on every render
   const handleLogout = useCallback(() => {
-    logoutUtil(navigate);
-    toast.success('Successfully logged out.');
-  }, [navigate])
+    logout();
+    navigate("/");
+    toast.success("Logged out successfully");
+  }, [logout, navigate]);
 
   const userName = localStorage.getItem('name') || (userRole === 'subadmin' ? 'Subadmin User' : 'Admin User');
   const userEmail = localStorage.getItem('email') || (userRole === 'subadmin' ? 'subadmin@buyboxmafia.com' : 'admin@buyboxmafia.com');
