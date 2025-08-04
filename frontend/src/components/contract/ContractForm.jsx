@@ -8,27 +8,6 @@ import { useAuth } from "../../store/AuthContext";
 
 export default function ContractForm({ formData, setFormData, errors, setErrors }) {
   const { user } = useAuth();
-  useEffect(() => {
-
-    if (!formData.scoutName || !formData.scoutEmail) {
-      const email = user?.email;
-      if (!email) return;
-      scoutService.getAllScouts().then(scouts => {
-        const scout = Array.isArray(scouts)
-          ? scouts.find(s => s.email === email)
-          : null;
-        if (scout) {
-          setFormData(prev => ({
-            ...prev,
-            scoutName: scout.name || prev.scoutName,
-            scoutEmail: scout.email || prev.scoutEmail,
-            scoutPhone: scout.phone || prev.scoutPhone,
-            scoutCompany: scout.company || prev.scoutCompany,
-          }));
-        }
-      }).catch((err) => { console.error("Error fetching scouts:", err); });
-    }
-  }, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -80,7 +59,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="scoutName"
-                value={formData.scoutName || ""}
+                value={user?.name || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Enter scout's name"
@@ -95,7 +74,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="email"
                 name="scoutEmail"
-                value={formData.scoutEmail || ""}
+                value={user?.email || ""}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="scout@example.com"
@@ -110,14 +89,15 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="tel"
                 name="scoutPhone"
-                value={formData.scoutPhone || ""}
+                value={user?.phone || formData.scoutPhone}
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="+1 (555) 123-4567"
-                readOnly={false}
+                disabled={!!user?.phone}
               />
             </motion.div>
           </div>
+
           <div>
             <label className={labelClass}>Company</label>
             <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">

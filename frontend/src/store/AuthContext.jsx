@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
                 body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
+            console.log("Login response:", data);
             if (res.ok && data.success) {
                 localStorage.setItem("isLoggedIn", "true");
                 localStorage.setItem("role", data.user.role);
@@ -30,12 +31,14 @@ export function AuthProvider({ children }) {
                 localStorage.setItem("name", data.user.name);
                 localStorage.setItem("email", data.user.email);
                 localStorage.setItem("uid", data.user.id || data.user.uid);
+                localStorage.setItem("phone", data.user.phone || "");
                 setIsAuthenticated(true);
                 setUser({
                     name: data.user.name,
                     email: data.user.email,
                     role: data.user.role,
                     id: data.user.id || data.user.uid,
+                    phone: data.user.phone || "",
                 });
                 toast.success("Login successful!", { position: "top-center" });
                 return true;

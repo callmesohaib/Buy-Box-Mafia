@@ -29,7 +29,7 @@ const authController = {
       // 3. Generate JWT (or Firebase custom token if you want)
       // We'll use JWT for simplicity
       const token = jwt.sign(
-        { id: userDoc.id, email: user.email, role: user.role },
+        { id: userDoc.id, email: user.email, role: user.role  },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
@@ -43,6 +43,7 @@ const authController = {
           name: user.name,
           email: user.email,
           role: user.role,
+          phone: user.phone || "",
         },
       });
     } catch (error) {
