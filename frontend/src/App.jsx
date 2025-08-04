@@ -18,6 +18,8 @@ import MyDeals from "./pages/MyDeals";
 import AdminRoutes from "./components/admin/adminRoutes";
 import SubadminRoutes from "./components/admin/SubadminRoutes";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./store/AuthContext";
 import './index.css';
@@ -63,7 +65,9 @@ function AppContent() {
   }, [location]);
 
   if (!isLoggedIn) {
-    if (location.pathname !== "/login" && location.pathname !== "/register") {
+    // Allow unauthenticated access to login, register, forgot-password, and reset-password
+    const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
+    if (!publicRoutes.includes(location.pathname)) {
       return <Navigate to="/login" replace />;
     }
     return (
@@ -72,6 +76,8 @@ function AppContent() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>

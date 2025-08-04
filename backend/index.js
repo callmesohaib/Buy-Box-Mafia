@@ -4,6 +4,7 @@ const docusignRoutes = require("./routers/docusignRoutes");
 const cors = require("cors");
 const path = require("path");
 const authRoutes = require("./routers/authroutes");
+const forgotPasswordRoutes = require("./routers/forgotPasswordRoutes");
 const subadminRoutes = require("./routers/subadminRoutes");
 const buyerRoutes = require("./routers/buyerRoutes");
 const dealsRoutes = require("./routers/dealsRoutes");
@@ -29,6 +30,7 @@ app.use("/api/docusign", docusignRoutes);
 
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", forgotPasswordRoutes);
 app.use("/api/subadmin", subadminRoutes);
 app.use("/api/buyers", buyerRoutes);
 app.use("/api/deals", dealsRoutes);
