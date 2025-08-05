@@ -165,3 +165,35 @@ export const getDealsBySubmitter = async (submitterId) => {
   const deals = await getDeals();
   return deals.filter((deal) => deal.submittedBy === submitterId);
 };
+
+// Get potential buyers for a specific deal
+export const getDealMatches = async (dealId) => {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/${dealId}/matches`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+  }
+  return res.json();
+};
+
+// Get potential buyers count for all deals
+export const getPotentialBuyersCount = async () => {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/potential-buyers/count`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+  }
+  return res.json();
+};

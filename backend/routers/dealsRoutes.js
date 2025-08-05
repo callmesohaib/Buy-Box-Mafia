@@ -18,6 +18,12 @@ router.get("/mls/:mlsNumber", dealsController.getDealsByMlsNumber);
 // Get deals by status
 router.get("/status/:status", dealsController.getDealsByStatus);
 
+// Get potential buyers for a specific deal
+router.get("/:id/matches", dealsController.getDealMatches);
+
+// Get potential buyers count for all deals
+router.get("/potential-buyers/count", dealsController.getPotentialBuyersCount);
+
 // Add a new deal
 router.post("/", dealsController.addDeal);
 

@@ -1,21 +1,70 @@
-import { useNavigate } from "react-router-dom"
-import { useState } from "react"
-import { ArrowLeft, User, DollarSign, Star, Check } from "lucide-react"
+import { useNavigate, useParams } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { ArrowLeft, User, DollarSign, Star, Check, Loader2, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import { pageVariants, pageTransition, staggerContainer, staggerItem } from "../../../animations/animation"
-
-const mockBuyers = [
-  { id: 1, name: "Alice Brown", fitScore: 92, maxOffer: 120000 },
-  { id: 2, name: "Bob Smith", fitScore: 88, maxOffer: 118000 },
-  { id: 3, name: "Charlie Green", fitScore: 80, maxOffer: 115000 },
-]
+import { getDealMatches } from "../../../services/dealsService"
 
 export default function DealMatches() {
   const navigate = useNavigate()
+  const { id } = useParams()
   const [assignedBuyer, setAssignedBuyer] = useState(null)
+  const [matchedBuyers, setMatchedBuyers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [buyersCount, setBuyersCount] = useState(0)
+
+  useEffect(() => {
+    const fetchDealMatches = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const data = await getDealMatches(id)
+        setMatchedBuyers(data.matchedBuyers || [])
+        setBuyersCount(data.buyersCount || 0)
+      } catch (error) {
+        console.error("Error fetching deal matches:", error)
+        setError(error.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (id) {
+      fetchDealMatches()
+    }
+  }, [id])
 
   const handleAssign = (buyerId) => {
     setAssignedBuyer(buyerId)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading buyer matches...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+          <p className="text-red-400 mb-4">Error loading matches: {error}</p>
+          <button 
+            onClick={() => navigate(-1)} 
+            className="px-4 py-2 bg-amber-400 text-gray-900 rounded-lg hover:bg-amber-500 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -45,7 +94,7 @@ export default function DealMatches() {
             animate="animate"
             className="flex flex-col gap-5"
           >
-            {mockBuyers.map(buyer => (
+            {matchedBuyers.map(buyer => (
               <motion.div
                 key={buyer.id}
                 variants={staggerItem}
@@ -56,11 +105,19 @@ export default function DealMatches() {
                 <div className="flex-1 flex flex-col gap-2 text-center sm:text-left">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-lg font-semibold text-white justify-center sm:justify-start">
                     <User size={22} className="text-red-400 mx-auto sm:mx-0" />
-                    <span>{buyer.name}</span>
+                    <span>{buyer.name || buyer.firstName + ' ' + buyer.lastName || 'Unknown Buyer'}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-400 justify-center sm:justify-start">
-                    <span className="flex items-center gap-1 justify-center sm:justify-start"><Star size={16} className="text-amber-400" /> Fit Score: <span className="font-bold text-amber-400">{buyer.fitScore}</span></span>
-                    <span className="flex items-center gap-1 justify-center sm:justify-start"><DollarSign size={16} className="text-green-400" /> Max Offer: <span className="font-bold text-green-400">${buyer.maxOffer.toLocaleString()}</span></span>
+                    <span className="flex items-center gap-1 justify-center sm:justify-start">
+                      <Star size={16} className="text-amber-400" /> 
+                      Fit Score: <span className="font-bold text-amber-400">{buyer.fitScore || buyer.matchPercent || 0}</span>
+                    </span>
+                    <span className="flex items-center gap-1 justify-center sm:justify-start">
+                      <DollarSign size={16} className="text-green-400" /> 
+                      Max Offer: <span className="font-bold text-green-400">
+                        ${(buyer.maxOffer || buyer.maxPrice || 0).toLocaleString()}
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-center sm:justify-end mt-2 sm:mt-0 w-full sm:w-auto">
@@ -75,7 +132,7 @@ export default function DealMatches() {
                 </div>
               </motion.div>
             ))}
-            {mockBuyers.length === 0 && (
+            {matchedBuyers.length === 0 && (
               <div className="text-center text-gray-400 py-12">No matching buyers found.</div>
             )}
           </motion.div>

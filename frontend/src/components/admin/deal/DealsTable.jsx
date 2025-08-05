@@ -15,7 +15,8 @@ import {
   Download,
   RefreshCw,
   Users,
-  X
+  X,
+  Loader2
 } from "lucide-react"
 import { pageVariants, pageTransition } from "../../../animations/animation"
 // import dealsData from '../../../data/deals.json';
@@ -54,6 +55,8 @@ export default function DealsTable() {
   const [dealList, setDealList] = useState([])
   const [statusEditId, setStatusEditId] = useState(null)
   const [newStatus, setNewStatus] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // Unique filter options
   const counties = Array.from(new Set(dealList.map(d => d.county)))
@@ -62,10 +65,10 @@ export default function DealsTable() {
 
   // Filtering
   const filtered = dealList.filter(d =>
-    (search === "" || d.address.toLowerCase().includes(search.toLowerCase()) || d.scout.toLowerCase().includes(search.toLowerCase())) &&
+    (search === "" || d.address?.toLowerCase().includes(search.toLowerCase()) || d.scoutName?.toLowerCase().includes(search.toLowerCase())) &&
     (county === "" || d.county === county) &&
     (status === "" || d.status === status) &&
-    (scout === "" || d.scout === scout)
+    (scout === "" || d.scoutName === scout)
   )
 
   // Summary counts
@@ -93,15 +96,21 @@ export default function DealsTable() {
   const handleViewDeal = (id) => {
     navigate(`/admin/deals/${id}/view`)
   }
+  
   useEffect(() => {
     // Fetch deals from service
     const fetchDeals = async () => {
       try {
+        setIsLoading(true)
+        setError(null)
         const fetchedDeals = await getDeals()
         console.log("Fetched deals:", fetchedDeals)
         setDealList(fetchedDeals)
       } catch (error) {
         console.error("Error fetching deals:", error)
+        setError(error.message)
+      } finally {
+        setIsLoading(false)
       }
     }
     fetchDeals()
@@ -125,6 +134,34 @@ export default function DealsTable() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [statusEditId])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading deals...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+          <p className="text-red-400 mb-4">Error loading deals: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-amber-400 text-gray-900 rounded-lg hover:bg-amber-500 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -179,7 +216,7 @@ export default function DealsTable() {
           <div key={deal.id} className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col justify-between border border-gray-700">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <span className="mr-2 text-gray-400">{deal.dealId}</span>
+                <span className="mr-2 text-gray-400">{deal.dealId || deal.id}</span>
                 <h3 className="font-semibold text-white text-lg mb-1">{deal.propertyAddress}</h3>
                 <div className="flex items-center text-gray-400 text-sm mb-2">
                 </div>
@@ -200,11 +237,11 @@ export default function DealsTable() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Potential Buyers</span>
-                <span className="font-semibold text-green-400">{deal.potentialBuyers}</span>
+                <span className="font-semibold text-green-400">{deal.buyersCount || 0}</span>
               </div>
             </div>
             <div className="flex items-center text-sm text-gray-400 mb-4">
-              <span className="mr-2">👤 Scout: {deal.scoutName}</span>
+              <span className="mr-2">👤 Scout: {deal.scoutName || deal.submittedByName || 'Unknown'}</span>
             </div>
             {/* Above the action buttons, add a dropdown input for changing status: */}
             <div className="mb-3">

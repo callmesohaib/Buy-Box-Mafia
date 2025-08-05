@@ -230,4 +230,70 @@ exports.getDealsByStatus = async (req, res) => {
     console.error("Error fetching deals by status:", error);
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// Get potential buyers for a specific deal
+exports.getDealMatches = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dealDoc = await db.collection("deals").doc(id).get();
+    
+    if (!dealDoc.exists) {
+      return res.status(404).json({ success: false, message: "Deal not found" });
+    }
+
+    const deal = dealDoc.data();
+    const matchedBuyers = deal.matchedBuyers || [];
+    const buyerIds = deal.buyerIds || [];
+
+    // If we have buyer IDs, fetch the actual buyer data
+    let buyersWithDetails = [];
+    if (buyerIds.length > 0) {
+      const buyersSnapshot = await db.collection("buyers")
+        .where(admin.firestore.FieldPath.documentId(), 'in', buyerIds)
+        .get();
+      
+      buyersWithDetails = buyersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    }
+
+    // Merge matched buyers data with actual buyer details
+    const enrichedBuyers = matchedBuyers.map(matchedBuyer => {
+      const buyerDetail = buyersWithDetails.find(b => b.id === matchedBuyer.id);
+      return {
+        ...matchedBuyer,
+        ...buyerDetail,
+        fitScore: matchedBuyer.matchPercent || 0,
+        maxOffer: buyerDetail?.maxOffer || matchedBuyer.maxOffer || 0
+      };
+    });
+
+    res.status(200).json({
+      dealId: id,
+      matchedBuyers: enrichedBuyers,
+      buyersCount: deal.buyersCount || 0
+    });
+  } catch (error) {
+    console.error("Error fetching deal matches:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get potential buyers count for all deals
+exports.getPotentialBuyersCount = async (req, res) => {
+  try {
+    const dealsSnapshot = await db.collection("deals").get();
+    const deals = dealsSnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      buyersCount: doc.data().buyersCount || 0,
+      matchedBuyers: doc.data().matchedBuyers || []
+    }));
+    
+    res.status(200).json(deals);
+  } catch (error) {
+    console.error("Error fetching potential buyers count:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 }; 
