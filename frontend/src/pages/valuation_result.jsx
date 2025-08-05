@@ -177,8 +177,14 @@ export default function ValuationResult() {
   }, [propertyData]);
 
   const handlePrepareDealPackage = () => {
-
-    navigate(`/contract/${mlsNumber}`)
+    // Pass matched buyers data to the contract preparation page
+    navigate(`/contract/${mlsNumber}`, {
+      state: {
+        matchedBuyers: matchedBuyers,
+        buyersCount: matchedBuyers.length,
+        buyerIds: matchedBuyers.map(buyer => buyer.id).filter(Boolean)
+      }
+    })
   }
 
   // Show loading spinner until BOTH property and buyers are loaded

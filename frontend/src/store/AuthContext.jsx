@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
@@ -12,9 +12,35 @@ export function AuthProvider({ children }) {
         const role = localStorage.getItem("role");
         const id = localStorage.getItem("uid") || localStorage.getItem("userId");
         const phone = localStorage.getItem("phone") || "";
-        return name && email && role && id && phone ? { name, email, role, id, phone } : null;
+
+        // Debug logging to help identify the issue
+        console.log("AuthContext initialization:", {
+            name, email, role, id, phone,
+            hasName: !!name,
+            hasEmail: !!email,
+            hasRole: !!role,
+            hasId: !!id
+        });
+
+        // Only require essential fields (name, email, role, id) - phone can be empty
+        return name && email && role && id ? { name, email, role, id, phone } : null;
     });
     const navigate = useNavigate();
+
+    // Sync authentication state on mount
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const name = localStorage.getItem("name");
+        const email = localStorage.getItem("email");
+        const role = localStorage.getItem("role");
+        const id = localStorage.getItem("uid") || localStorage.getItem("userId");
+        const phone = localStorage.getItem("phone") || "";
+
+        if (token && name && email && role && id) {
+            setIsAuthenticated(true);
+            setUser({ name, email, role, id, phone });
+        }
+    }, []);
 
     const login = async (email, password) => {
         try {

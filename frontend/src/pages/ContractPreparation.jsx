@@ -29,7 +29,15 @@ export default function ContractPreparation() {
   const initialContractData = (location.state && location.state.contractData)
     ? { ...defaultDropdowns, ...location.state.contractData }
     : { ...defaultDropdowns };
-  const [contractData, setContractData] = useState(initialContractData);
+  
+  // Add buyer data from valuation result
+  const buyerData = location.state || {};
+  const [contractData, setContractData] = useState({
+    ...initialContractData,
+    matchedBuyers: buyerData.matchedBuyers || [],
+    buyersCount: buyerData.buyersCount || 0,
+    buyerIds: buyerData.buyerIds || []
+  });
   const [errors, setErrors] = useState({});
   const mlsNumber = dealId;
   const [propertyData, setPropertyData] = useState(null);
@@ -123,7 +131,20 @@ export default function ContractPreparation() {
     setCurrentStepState(step);
     const params = new URLSearchParams(location.search);
     params.set('step', step);
-    navigate({ search: params.toString() }, { replace: true, state: { contractData: data } });
+    navigate({ 
+      search: params.toString() 
+    }, { 
+      replace: true, 
+      state: { 
+        contractData: {
+          ...data,
+          // Ensure buyer data is preserved
+          matchedBuyers: data.matchedBuyers || contractData.matchedBuyers || [],
+          buyersCount: data.buyersCount || contractData.buyersCount || 0,
+          buyerIds: data.buyerIds || contractData.buyerIds || []
+        } 
+      } 
+    });
   };
 
 
@@ -254,7 +275,15 @@ export default function ContractPreparation() {
         sessionStorage.setItem(`signingUrl_${dealId}`, data.url);
 
         // Go to signature step, pass envelopeId and signing URL
-        setCurrentStep(currentStep + 1, { ...contractData, envelopeId: data.envelopeId, signingUrl: data.url });
+        setCurrentStep(currentStep + 1, { 
+          ...contractData, 
+          envelopeId: data.envelopeId, 
+          signingUrl: data.url,
+          // Preserve buyer data
+          matchedBuyers: contractData.matchedBuyers || [],
+          buyersCount: contractData.buyersCount || 0,
+          buyerIds: contractData.buyerIds || []
+        });
         return;
       } catch (e) {
         setIsLoading(false);
@@ -286,7 +315,18 @@ export default function ContractPreparation() {
     setIsLoading(true);
     try {
       // Just navigate to Deal Submission page, passing contractData and dealId
-      navigate(`/submit/${dealId}`, { state: { contractData, dealId } });
+      navigate(`/submit/${dealId}`, { 
+        state: { 
+          contractData: {
+            ...contractData,
+            // Ensure buyer data is included
+            matchedBuyers: contractData.matchedBuyers || [],
+            buyersCount: contractData.buyersCount || 0,
+            buyerIds: contractData.buyerIds || []
+          }, 
+          dealId 
+        } 
+      });
     } finally {
       setIsLoading(false);
     }

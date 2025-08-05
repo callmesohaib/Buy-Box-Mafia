@@ -14,7 +14,8 @@ import {
   X,
   Send,
   Download,
-  Eye
+  Eye,
+  Users
 } from "lucide-react"
 import {
   fadeInUp,
@@ -50,11 +51,18 @@ export default function DealSubmission() {
       status: location.state.contractData.status || "Pending",
       scoutNotes: location.state.contractData.scoutNotes || "",
       contractFile: null,
+      // Preserve buyer data from contract preparation
+      matchedBuyers: location.state.contractData.matchedBuyers || [],
+      buyersCount: location.state.contractData.buyersCount || 0,
+      buyerIds: location.state.contractData.buyerIds || []
     }
     : {
       status: "Pending",
       scoutNotes: "",
       contractFile: null,
+      matchedBuyers: [],
+      buyersCount: 0,
+      buyerIds: []
     };
   const [formData, setFormData] = useState(initialFormData);
 
@@ -72,6 +80,10 @@ export default function DealSubmission() {
         scoutPhone: user?.phone || "",
         Company: user?.company || "Buy Box Mafia",
         submittedBy: user?.id || user?.uid,
+        // Preserve buyer data
+        matchedBuyers: location.state.contractData.matchedBuyers || prev.matchedBuyers || [],
+        buyersCount: location.state.contractData.buyersCount || prev.buyersCount || 0,
+        buyerIds: location.state.contractData.buyerIds || prev.buyerIds || []
       }));
     }
     // eslint-disable-next-line
@@ -236,6 +248,28 @@ export default function DealSubmission() {
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
                     <span className="text-sm font-medium text-[var(--primary-gray-text)]">Flood Zone</span>
                     <span className="text-sm text-white">{parcelData.floodZone}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buyer Matching Information */}
+              <div className="mt-6 pt-6 border-t border-[var(--tertiary-gray-bg)]">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Users size={20} className="text-green-500" />
+                  Buyer Matching ({formData.buyersCount || 0} matches)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
+                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Matched Buyers</span>
+                    <span className="text-sm font-semibold text-green-400">{formData.buyersCount || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
+                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Top Match Score</span>
+                    <span className="text-sm font-semibold text-[var(--gold)]">
+                      {formData.matchedBuyers && formData.matchedBuyers.length > 0 
+                        ? `${formData.matchedBuyers[0].matchPercent}%` 
+                        : 'N/A'}
+                    </span>
                   </div>
                 </div>
               </div>

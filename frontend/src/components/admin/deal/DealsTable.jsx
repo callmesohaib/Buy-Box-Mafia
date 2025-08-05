@@ -70,7 +70,7 @@ export default function DealsTable() {
 
   // Summary counts
   const total = dealList.length
-  const pending = dealList.filter(d => d.status === "Pending").length
+  const pending = dealList.filter(d => d.status === "pending").length
   const approved = dealList.filter(d => d.status === "Approved").length
   const rejected = dealList.filter(d => d.status === "Rejected").length
 

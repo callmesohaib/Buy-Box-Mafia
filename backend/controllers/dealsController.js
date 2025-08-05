@@ -56,6 +56,11 @@ const toFirestoreDeal = (body) => {
     // File Upload (store file name or null, not the file object)
     contractFile: body.contractFile && body.contractFile.name ? body.contractFile.name : null,
 
+    // Buyer matching data
+    matchedBuyers: Array.isArray(body.matchedBuyers) ? body.matchedBuyers : [],
+    buyersCount: safe(body.buyersCount, 0),
+    buyerIds: Array.isArray(body.buyerIds) ? body.buyerIds : [],
+
     // Additional fields from formData (if present)
     scoutNotes: safe(body.scoutNotes, ''),
     Company: safe(body.Company, ''),

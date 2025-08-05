@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
+import React, { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { fadeInDown } from "../animations/animation"
 import Sidebar from "../components/admin/Sidebar"
@@ -8,14 +7,21 @@ import { useAuth } from "../store/AuthContext"
 
 function AdminDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user } = useAuth();
-  const role = useMemo(() => user?.role, [])
+  const { user, isAuthenticated } = useAuth();
+  const role = user?.role
+  console.log("User role in AdminDashboard:", role)
 
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[var(--from-bg)] to-[var(--secondary-gray-bg)] flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  // Memoize the setActiveTab function to prevent Sidebar re-renders
   const setActiveTab = useCallback(() => { }, [])
 
   return (
@@ -58,4 +64,4 @@ function AdminDashboard() {
 }
 
 // Memoize the component to prevent unnecessary re-renders
-export default React.memo(AdminDashboard)
+export default AdminDashboard
