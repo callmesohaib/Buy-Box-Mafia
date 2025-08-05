@@ -15,7 +15,6 @@ export const addDeal = async (dealData) => {
   // Remove undefined fields to avoid Firestore error
   const cleanDealData = removeUndefined(dealData);
   // For debugging
-  console.log("addDeal API called with:", cleanDealData);
   const res = await fetch(`${API_BASE_URL}`, {
     method: "POST",
     headers: {
