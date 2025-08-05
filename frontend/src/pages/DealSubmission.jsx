@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
+import { useAuth } from "../store/AuthContext"
 import {
   ChevronLeft,
   Upload,
@@ -25,45 +26,56 @@ import {
   staggerContainer,
   staggerItem
 } from "../animations/animation"
+import { addDeal } from "../services/dealsService"
 
 export default function DealSubmission() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [formData, setFormData] = useState({
-    status: "Pending Review",
-    scoutNotes: "",
-    contractFile: null
-  })
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
-  // Mock parcel data - in real app this would come from API
-  const parcelData = {
-    id: id,
-    address: "123 Main Street, Austin, TX 78701",
-    parcelId: "TX-123-456-789",
-    size: "2.5 acres",
-    zoning: "Residential",
-    currentValue: "$450,000",
-    estimatedValue: "$520,000",
-    owner: "John Smith",
-    ownerPhone: "+1 (555) 123-4567",
-    ownerEmail: "john.smith@email.com",
-    lastContact: "2024-01-15",
-    propertyType: "Residential Land",
-    utilities: "Water, Electricity, Sewer",
-    roadAccess: "Paved",
-    topography: "Flat",
-    floodZone: "No",
-    taxAssessedValue: "$380,000",
-    annualTaxes: "$8,500"
+  const removeFile = () => {
+    setSelectedFile(null);
+    setFormData(prev => ({
+      ...prev,
+      contractFile: null
+    }));
   }
+  const { user } = useAuth();
+  const { id: urlId } = useParams();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const location = useLocation();
+  const dealId = location.state?.dealId || urlId;
+  const initialFormData = location.state?.contractData
+    ? {
+      ...location.state.contractData,
+      status: location.state.contractData.status || "Pending Review",
+      scoutNotes: location.state.contractData.scoutNotes || "",
+      contractFile: null,
+    }
+    : {
+      status: "Pending Review",
+      scoutNotes: "",
+      contractFile: null,
+    };
+  const [formData, setFormData] = useState(initialFormData);
+
+  console.log("DealSubmission formData:", formData);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (location.state?.contractData) {
+      setFormData((prev) => ({
+        ...prev,
+        ...location.state.contractData,
+        status: location.state.contractData.status || "Pending Review",
+        scoutNotes: location.state.contractData.scoutNotes || "",
+        scoutName: user?.name,
+        scoutEmail: user?.email,
+        scoutPhone: user?.phone || "",
+        Company: user?.company || "Buy Box Mafia",
+        submittedBy: user?.id || user?.uid,
+      }));
+    }
+    // eslint-disable-next-line
+  }, [location.state?.contractData]);
 
   const statusOptions = [
     "Pending Review",
@@ -96,12 +108,15 @@ export default function DealSubmission() {
   }
 
   const handleSubmit = async () => {
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      setShowModal(true)
-    }, 2000)
+    setIsLoading(true);
+    try {
+      await addDeal(formData);
+      setShowModal(true);
+    } catch (error) {
+      alert(error.message || "Failed to submit deal. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleConfirmSubmit = () => {
@@ -109,13 +124,29 @@ export default function DealSubmission() {
     navigate("/property-search")
   }
 
-  const removeFile = () => {
-    setSelectedFile(null)
-    setFormData(prev => ({
-      ...prev,
-      contractFile: null
-    }))
-  }
+
+  // Build parcelData from contractData (from navigation state or formData)
+  const contractData = location.state?.contractData || formData || {};
+  const parcelData = {
+    id: dealId || contractData.dealId || 'N/A',
+    address: contractData.propertyAddress || contractData.address || 'N/A',
+    parcelId: contractData.parcelId || contractData.mlsNumber || 'N/A',
+    size: contractData.size || contractData.propertySize || 'N/A',
+    zoning: contractData.class || contractData.propertyClass || 'N/A',
+    currentValue: contractData.currentValue || contractData.propertyPrice || 'N/A',
+    estimatedValue: contractData.estimatedValue || contractData.listPrice || 'N/A',
+    owner: contractData.owner || contractData.sellerName || 'N/A',
+    ownerPhone: contractData.sellerPhone || 'N/A',
+    ownerEmail: contractData.sellerEmail || 'N/A',
+    lastContact: contractData.lastContact || 'N/A',
+    propertyType: contractData.propertyType || 'N/A',
+    utilities: contractData.utilities || 'N/A',
+    roadAccess: contractData.roadAccess || 'N/A',
+    topography: contractData.topography || 'N/A',
+    floodZone: contractData.floodZone || 'N/A',
+    taxAssessedValue: contractData.taxAssessedValue || 'N/A',
+    annualTaxes: contractData.annualTaxes || 'N/A'
+  };
 
   return (
     <motion.div
@@ -141,7 +172,7 @@ export default function DealSubmission() {
             </button>
             <h1 className="text-2xl font-bold text-white tracking-tight">Deal Submission</h1>
           </div>
-          <p className="text-[var(--secondary-gray-text)]">Deal ID: #{id}</p>
+          <p className="text-[var(--secondary-gray-text)]">Deal ID: #{dealId}</p>
         </motion.div>
 
         <motion.div
@@ -333,12 +364,6 @@ export default function DealSubmission() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button className="p-2 text-[var(--primary-gray-text)] hover:text-[var(--mafia-red)] transition-colors">
-                        <Eye size={16} />
-                      </button>
-                      <button className="p-2 text-[var(--primary-gray-text)] hover:text-[var(--mafia-red)] transition-colors">
-                        <Download size={16} />
-                      </button>
                       <button
                         onClick={removeFile}
                         className="p-2 text-red-600 hover:text-red-700 transition-colors"

@@ -11,7 +11,8 @@ export function AuthProvider({ children }) {
         const email = localStorage.getItem("email");
         const role = localStorage.getItem("role");
         const id = localStorage.getItem("uid") || localStorage.getItem("userId");
-        return name && email && role && id ? { name, email, role, id } : null;
+        const phone = localStorage.getItem("phone") || "";
+        return name && email && role && id && phone ? { name, email, role, id, phone } : null;
     });
     const navigate = useNavigate();
 
@@ -59,6 +60,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("name");
         localStorage.removeItem("email");
         localStorage.removeItem("uid");
+        localStorage.removeItem("phone");
         setIsAuthenticated(false);
         setUser(null);
         toast.success("Logged out successfully", { position: "top-center" });

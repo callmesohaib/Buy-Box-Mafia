@@ -1,59 +1,71 @@
 const { db, admin } = require("../utils/firebase");
 
 // Transform request body to Firestore deal format
-const toFirestoreDeal = (body) => ({
-  // Scout Information
-  scoutName: body.scoutName,
-  scoutEmail: body.scoutEmail,
-  scoutPhone: body.scoutPhone,
-  scoutCompany: body.scoutCompany,
+const toFirestoreDeal = (body) => {
+  // Helper to safely get value or fallback to null
+  const safe = (v, fallback = null) => (v === undefined ? fallback : v);
+  return {
+    // Scout Information
+    scoutName: safe(body.scoutName, ''),
+    scoutEmail: safe(body.scoutEmail, ''),
+    scoutPhone: safe(body.scoutPhone, ''),
+    scoutCompany: safe(body.Company, ''),
 
-  // Seller Information
-  sellerName: body.sellerName,
-  sellerEmail: body.sellerEmail,
-  sellerPhone: body.sellerPhone,
-  sellerAddress: body.sellerAddress,
+    // Seller Information
+    sellerName: safe(body.sellerName, ''),
+    sellerEmail: safe(body.sellerEmail, ''),
+    sellerPhone: safe(body.sellerPhone, ''),
+    sellerAddress: safe(body.sellerAddress, ''),
 
-  // Property Information
-  propertyAddress: body.propertyAddress,
-  propertyCity: body.propertyCity,
-  propertyState: body.propertyState,
-  propertyCountry: body.propertyCountry,
-  propertyPrice: body.propertyPrice,
-  propertyType: body.propertyType,
-  propertyZoning: body.propertyClass ||"Not mention",
-  propertySize: body.propertySize,
-  apn: body.apn,
-  mlsNumber: body.mlsNumber,
-  listPrice: body.listPrice,
-  listDate: body.listDate,
-  status: body.status,
+    // Property Information
+    propertyAddress: safe(body.propertyAddress, ''),
+    propertyCity: safe(body.propertyCity, ''),
+    propertyState: safe(body.propertyState, ''),
+    propertyCountry: safe(body.propertyCountry, ''),
+    propertyPrice: safe(body.propertyPrice, ''),
+    propertyType: safe(body.propertyType, ''),
+    propertyZoning: safe(body.propertyZoning, safe(body.propertyClass, 'Not mention')),
+    propertyClass: safe(body.propertyClass, ''),
+    propertySize: safe(body.propertySize, ''),
+    apn: safe(body.apn, ''),
+    mlsNumber: safe(body.mlsNumber, ''),
+    listPrice: safe(body.listPrice, ''),
+    listDate: safe(body.listDate, ''),
+    status: safe(body.status, ''),
 
-  // Offer Details
-  offerPrice: body.offerPrice,
-  earnestMoney: body.earnestMoney,
-  closingDate: body.closingDate,
-  financingType: body.financingType,
+    // Offer Details
+    offerPrice: safe(body.propertyPrice, ''),
+    earnestMoney: safe(body.earnestMoney, ''),
+    closingDate: safe(body.closingDate, ''),
+    financingType: safe(body.financingType, ''),
 
-  // Terms and Conditions
-  inspectionPeriod: body.inspectionPeriod,
-  titleInsurance: body.titleInsurance,
-  surveyRequired: body.surveyRequired,
-  additionalTerms: body.additionalTerms,
+    // Terms and Conditions
+    inspectionPeriod: safe(body.inspectionPeriod, ''),
+    titleInsurance: safe(body.titleInsurance, ''),
+    surveyRequired: safe(body.surveyRequired, ''),
+    additionalTerms: safe(body.additionalTerms, ''),
 
-  // DocuSign Information
-  envelopeId: body.envelopeId,
-  signingUrl: body.signingUrl,
+    // DocuSign Information
+    envelopeId: safe(body.envelopeId, ''),
+    signingUrl: safe(body.signingUrl, ''),
 
-  // Deal Status
-  dealStatus: body.dealStatus || 'pending',
-  dealId: body.dealId,
-  
-  // Metadata
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  submittedBy: body.submittedBy || 'Unknown',
-});
+    // Deal Status
+    dealStatus: safe(body.dealStatus, 'pending'),
+    dealId: safe(body.mlsNumber, ''),
+
+    // File Upload (store file name or null, not the file object)
+    contractFile: body.contractFile && body.contractFile.name ? body.contractFile.name : null,
+
+    // Additional fields from formData (if present)
+    scoutNotes: safe(body.scoutNotes, ''),
+    Company: safe(body.Company, ''),
+
+    // Metadata
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    submittedBy: safe(body.submittedBy, 'Unknown'),
+  };
+};
 
 // Add a single deal
 exports.addDeal = async (req, res) => {

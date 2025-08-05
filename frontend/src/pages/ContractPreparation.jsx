@@ -66,7 +66,7 @@ export default function ContractPreparation() {
         propertyCountry: propertyData?.address?.country || '',
         propertyPrice: propertyData?.originalPrice || '',
         propertyType: propertyData?.type || '',
-        propertyZoning: propertyData?.zoning || '',
+        propertyZoning: propertyData?.class || '',
         propertyClass: propertyData?.class || '',
         listPrice: propertyData?.listPrice || '',
         listDate: propertyData?.listDate || '',
@@ -274,39 +274,10 @@ export default function ContractPreparation() {
   };
 
   const handleSubmit = async () => {
-    setIsLoading(true)
-
+    setIsLoading(true);
     try {
-      // Get logged-in user information
-      const loggedInUserEmail = user.email;
-      const loggedInUserName = user.name;
-      const userId = user.id;
-
-      // Prepare deal data for backend
-      const dealData = {
-        ...contractData,
-        dealId: dealId,
-        submittedBy: userId || loggedInUserEmail,
-        dealStatus: 'completed',
-        submittedByName: loggedInUserName || 'Unknown'
-      };
-      console.log("dealData", dealData);
-
-      // Save deal to backend using service
-      const result = await addDeal(dealData);
-      console.log("Deal saved successfully:", result);
-
-      // Clear session storage when deal is completed
-      sessionStorage.removeItem(`envelopeId_${dealId}`);
-      sessionStorage.removeItem(`signingUrl_${dealId}`);
-      sessionStorage.removeItem(`contractData_${dealId}`);
-
-      // Navigate to success page
-      navigate("/submit/22", { state: { contractData, dealId: result.id } });
-
-    } catch (error) {
-      console.error("Error saving deal:", error);
-      alert("Failed to save deal. Please try again.");
+      // Just navigate to Deal Submission page, passing contractData and dealId
+      navigate(`/submit/${dealId}`, { state: { contractData, dealId } });
     } finally {
       setIsLoading(false);
     }
