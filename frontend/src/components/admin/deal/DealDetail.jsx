@@ -162,15 +162,7 @@ export default function DealDetail() {
               <div className="font-semibold text-white">{deal.closingDate || 'Not specified'}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Calendar size={18} className="text-amber-400" />
-            <div>
-              <div className="text-gray-400 text-xs">Submitted Date</div>
-              <div className="font-semibold text-white">
-                {deal.createdAt ? new Date(deal.createdAt.toDate ? deal.createdAt.toDate() : deal.createdAt).toLocaleDateString() : 'Not specified'}
-              </div>
-            </div>
-          </div>
+
         </div>
         {/* Notes Section */}
         <div>

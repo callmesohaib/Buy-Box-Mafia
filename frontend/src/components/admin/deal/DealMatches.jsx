@@ -56,8 +56,8 @@ export default function DealMatches() {
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-4" />
           <p className="text-red-400 mb-4">Error loading matches: {error}</p>
-          <button 
-            onClick={() => navigate(-1)} 
+          <button
+            onClick={() => navigate(-1)}
             className="px-4 py-2 bg-amber-400 text-gray-900 rounded-lg hover:bg-amber-500 transition-colors"
           >
             Go Back
@@ -109,15 +109,10 @@ export default function DealMatches() {
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-400 justify-center sm:justify-start">
                     <span className="flex items-center gap-1 justify-center sm:justify-start">
-                      <Star size={16} className="text-amber-400" /> 
+                      <Star size={16} className="text-amber-400" />
                       Fit Score: <span className="font-bold text-amber-400">{buyer.fitScore || buyer.matchPercent || 0}</span>
                     </span>
-                    <span className="flex items-center gap-1 justify-center sm:justify-start">
-                      <DollarSign size={16} className="text-green-400" /> 
-                      Max Offer: <span className="font-bold text-green-400">
-                        ${(buyer.maxOffer || buyer.maxPrice || 0).toLocaleString()}
-                      </span>
-                    </span>
+
                   </div>
                 </div>
                 <div className="flex items-center justify-center sm:justify-end mt-2 sm:mt-0 w-full sm:w-auto">

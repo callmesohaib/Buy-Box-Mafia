@@ -19,7 +19,6 @@ import {
   Loader2
 } from "lucide-react"
 import { pageVariants, pageTransition } from "../../../animations/animation"
-// import dealsData from '../../../data/deals.json';
 import { getDeals } from "../../../services/dealsService"
 
 
@@ -59,14 +58,12 @@ export default function DealsTable() {
   const [error, setError] = useState(null)
 
   // Unique filter options
-  const counties = Array.from(new Set(dealList.map(d => d.county)))
   const statuses = Array.from(new Set(dealList.map(d => d.status)))
-  const scouts = Array.from(new Set(dealList.map(d => d.scout)))
+  const scouts = Array.from(new Set(dealList.map(d => d.scoutName)))
 
   // Filtering
   const filtered = dealList.filter(d =>
     (search === "" || d.address?.toLowerCase().includes(search.toLowerCase()) || d.scoutName?.toLowerCase().includes(search.toLowerCase())) &&
-    (county === "" || d.county === county) &&
     (status === "" || d.status === status) &&
     (scout === "" || d.scoutName === scout)
   )

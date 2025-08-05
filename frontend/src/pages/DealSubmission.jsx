@@ -48,7 +48,7 @@ export default function DealSubmission() {
   const initialFormData = location.state?.contractData
     ? {
       ...location.state.contractData,
-      status: location.state.contractData.status || "Pending",
+      status: "pending", // Always use "Pending" as default from dropdown
       scoutNotes: location.state.contractData.scoutNotes || "",
       contractFile: null,
       // Preserve buyer data from contract preparation
@@ -57,7 +57,7 @@ export default function DealSubmission() {
       buyerIds: location.state.contractData.buyerIds || []
     }
     : {
-      status: "Pending",
+      status: "pending", // Always use "Pending" as default
       scoutNotes: "",
       contractFile: null,
       matchedBuyers: [],
@@ -73,7 +73,7 @@ export default function DealSubmission() {
       setFormData((prev) => ({
         ...prev,
         ...location.state.contractData,
-        status: location.state.contractData.status || "Pending Review",
+        status: "pending", // Always use "Pending" from dropdown, ignore API status
         scoutNotes: location.state.contractData.scoutNotes || "",
         scoutName: user?.name,
         scoutEmail: user?.email,
@@ -334,7 +334,7 @@ export default function DealSubmission() {
               <h3 className="text-lg font-semibold text-white mb-4">Deal Status</h3>
               <select
                 name="status"
-                value={formData.status || "Pending"}
+                value={formData.status || "pending"}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 bg-[var(--primary-gray-bg)] text-white border border-[var(--tertiary-gray-bg)] rounded-xl focus:ring-2 focus:ring-[var(--mafia-red)] focus:border-transparent transition-all duration-200"
               >
