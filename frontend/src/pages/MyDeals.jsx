@@ -87,17 +87,17 @@ export default function MyDeals() {
 
   const filterDealsByDateRange = (deal) => {
     if (!startDate && !endDate) return true;
-    
+
     const closingDate = new Date(deal.closingDate);
-    
+
     if (startDate && !endDate) {
       return closingDate >= startDate;
     }
-    
+
     if (!startDate && endDate) {
       return closingDate <= endDate;
     }
-    
+
     return closingDate >= startDate && closingDate <= endDate;
   }
 
@@ -363,7 +363,7 @@ export default function MyDeals() {
                       dateFormat="MM/dd/yyyy"
                     />
                     {(startDate || endDate) && (
-                      <button 
+                      <button
                         onClick={clearDateRange}
                         className="text-[var(--placeholder-gray)] hover:text-white p-1"
                         title="Clear dates"
@@ -376,7 +376,7 @@ export default function MyDeals() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="relative">
                   <select
                     value={selectedStatus}
