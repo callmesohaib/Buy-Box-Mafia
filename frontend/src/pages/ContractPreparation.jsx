@@ -9,7 +9,6 @@ import ContractForm from "../components/contract/ContractForm"
 import ContractPreview from "../components/contract/ContractPreview"
 import SignatureStep from "../components/contract/SignatureStep"
 import { generateContractPDF } from "../components/contract/ContractPreview";
-import { addDeal } from "../services/dealsService";
 import { useAuth } from "../store/AuthContext"
 
 export default function ContractPreparation() {
@@ -79,6 +78,8 @@ export default function ContractPreparation() {
         listPrice: propertyData?.listPrice || '',
         listDate: propertyData?.listDate || '',
         status: propertyData?.status || '',
+        scoutName: user?.name || '',
+        scoutEmail: user?.email || '',
       }));
     }
   }, [propertyData]);
@@ -305,7 +306,6 @@ export default function ContractPreparation() {
       case 1:
         return <ContractPreview contractData={contractData} formData={contractData} dealId={dealId} isLoading={isLoading} />
       case 2:
-        // Check if signing URL is available, if not, show a message to go back
         if (!contractData.signingUrl) {
           return (
             <div className="text-center">

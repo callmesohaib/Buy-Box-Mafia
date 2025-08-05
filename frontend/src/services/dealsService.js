@@ -149,16 +149,14 @@ export const importDeals = async (deals) => {
   return res.json();
 };
 
-// Get deals for current user
-export const getMyDeals = async () => {
+// Get deals for current user (pass user object from useAuth)
+export const getMyDeals = async (user) => {
   const deals = await getDeals();
-  const currentUserEmail = localStorage.getItem("email");
-  const currentUserId =
-    localStorage.getItem("userId") || localStorage.getItem("uid");
+  if (!user) return [];
   return deals.filter(
     (deal) =>
-      deal.submittedBy === currentUserEmail ||
-      deal.submittedBy === currentUserId
+      deal.submittedBy === user.email ||
+      deal.submittedBy === user.id
   );
 };
 

@@ -47,12 +47,12 @@ export default function DealSubmission() {
   const initialFormData = location.state?.contractData
     ? {
       ...location.state.contractData,
-      status: location.state.contractData.status || "Pending Review",
+      status: location.state.contractData.status || "Pending",
       scoutNotes: location.state.contractData.scoutNotes || "",
       contractFile: null,
     }
     : {
-      status: "Pending Review",
+      status: "Pending",
       scoutNotes: "",
       contractFile: null,
     };
@@ -78,9 +78,7 @@ export default function DealSubmission() {
   }, [location.state?.contractData]);
 
   const statusOptions = [
-    "Pending Review",
-    "Under Contract",
-    "Closing Scheduled",
+    "Pending",
     "Closed",
     "Cancelled",
     "Expired"
@@ -302,7 +300,7 @@ export default function DealSubmission() {
               <h3 className="text-lg font-semibold text-white mb-4">Deal Status</h3>
               <select
                 name="status"
-                value={formData.status}
+                value={formData.status || "Pending"}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 bg-[var(--primary-gray-bg)] text-white border border-[var(--tertiary-gray-bg)] rounded-xl focus:ring-2 focus:ring-[var(--mafia-red)] focus:border-transparent transition-all duration-200"
               >
