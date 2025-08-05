@@ -296,4 +296,103 @@ exports.getPotentialBuyersCount = async (req, res) => {
     console.error("Error fetching potential buyers count:", error);
     res.status(500).json({ success: false, message: error.message });
   }
-}; 
+};
+
+// Get overview analytics data
+exports.getOverviewAnalytics = async (req, res) => {
+  try {
+    console.log("Fetching overview analytics...");
+    
+    // Get all deals
+    const dealsSnapshot = await db.collection("deals").get();
+    const deals = dealsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log(`Found ${deals.length} deals`);
+
+    // Get all buyers
+    const buyersSnapshot = await db.collection("buyers").get();
+    const buyers = buyersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log(`Found ${buyers.length} buyers`);
+
+    // Calculate analytics
+    const totalDeals = deals.length;
+    const totalBuyers = buyers.length; // Changed from activeBuyers to totalBuyers
+    
+    // Calculate total value from deals
+    const totalValue = deals.reduce((sum, deal) => {
+      let price = 0;
+      
+      // Handle different formats of offerPrice
+      if (deal.offerPrice) {
+        if (typeof deal.offerPrice === 'string') {
+          // Remove $ and commas from string
+          price = parseFloat(deal.offerPrice.replace(/[$,]/g, '')) || 0;
+        } else if (typeof deal.offerPrice === 'number') {
+          // Direct number
+          price = deal.offerPrice;
+        } else {
+          // Try to convert to number
+          price = parseFloat(deal.offerPrice) || 0;
+        }
+      }
+      
+      return sum + price;
+    }, 0);
+
+    // Calculate conversion rate (deals with status "Closed" or "Approved")
+    const closedDeals = deals.filter(deal => 
+      deal.status === "Closed" || deal.status === "Approved"
+    ).length;
+    const conversionRate = totalDeals > 0 ? Math.round((closedDeals / totalDeals) * 100) : 0;
+
+    // Get recent deals (last 3)
+    const recentDeals = deals
+      .sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return dateB - dateA;
+      })
+      .slice(0, 3)
+      .map(deal => ({
+        id: deal.id,
+        dealId: deal.dealId || deal.mlsNumber || deal.id,
+        propertyAddress: deal.propertyAddress || 'Address not available',
+        offerPrice: deal.offerPrice || 'Price not available',
+        status: deal.status || 'Unknown',
+        createdAt: deal.createdAt
+      }));
+
+    // Calculate monthly growth (simplified - you can enhance this)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const dealsThisMonth = deals.filter(deal => {
+      const dealDate = deal.createdAt?.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
+      return dealDate.getMonth() === currentMonth && dealDate.getFullYear() === currentYear;
+    }).length;
+
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const dealsLastMonth = deals.filter(deal => {
+      const dealDate = deal.createdAt?.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
+      return dealDate.getMonth() === lastMonth && dealDate.getFullYear() === lastYear;
+    }).length;
+
+    const monthlyGrowth = dealsLastMonth > 0 
+      ? `+${Math.round(((dealsThisMonth - dealsLastMonth) / dealsLastMonth) * 100)}%`
+      : dealsThisMonth > 0 ? `+${dealsThisMonth} new` : '0%';
+
+    const analyticsData = {
+      totalDeals,
+      totalBuyers, // Changed from activeBuyers to totalBuyers
+      totalValue: `$${totalValue.toLocaleString()}`,
+      conversionRate: `${conversionRate}%`,
+      monthlyGrowth,
+      recentDeals
+    };
+
+    console.log("Analytics data calculated:", analyticsData);
+    res.status(200).json(analyticsData);
+  } catch (error) {
+    console.error("Error fetching overview analytics:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

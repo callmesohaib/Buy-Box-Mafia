@@ -197,3 +197,19 @@ export const getPotentialBuyersCount = async () => {
   }
   return res.json();
 };
+
+// Get overview analytics data
+export const getOverviewAnalytics = async () => {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/analytics/overview`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+  }
+  return res.json();
+};

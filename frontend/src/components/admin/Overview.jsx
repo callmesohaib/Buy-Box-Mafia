@@ -1,16 +1,77 @@
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   FileText,
   Users,
   DollarSign,
   TrendingUp,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { staggerContainer, staggerItem } from "../../animations/animation"
-import analyticsData from "../../data/analytics.json"
-import deals from "../../data/deals.json"
-import buyers from "../../data/buyers.json"
+import { getOverviewAnalytics } from "../../services/dealsService"
 
 export default function Overview() {
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const data = await getOverviewAnalytics()
+        setAnalyticsData(data)
+      } catch (error) {
+        console.error("Error fetching analytics:", error)
+        setError(error.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading analytics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+          <p className="text-red-400 mb-4">Error loading analytics: {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-amber-400 text-gray-900 rounded-lg hover:bg-amber-500 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-4" />
+          <p className="text-red-400">No analytics data available</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -54,8 +115,8 @@ export default function Overview() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-400">Active Buyers</p>
-              <p className="text-2xl font-bold text-white">{buyers.filter(b => b.status === "Active").length}</p>
+              <p className="text-sm font-medium text-gray-400">Total Buyers</p>
+              <p className="text-2xl font-bold text-white">{analyticsData.totalBuyers}</p>
             </div>
             <div className="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center">
               <Users size={24} className="text-green-400" />
@@ -113,20 +174,27 @@ export default function Overview() {
       >
         <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
         <div className="space-y-4">
-          {deals.slice(0, 3).map((deal) => (
-            <div key={deal.id} className="flex items-center gap-4 p-3 bg-gray-700 rounded-lg border border-gray-600">
-              <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
-                <FileText size={20} className="text-green-400" />
+          {analyticsData.recentDeals && analyticsData.recentDeals.length > 0 ? (
+            analyticsData.recentDeals.map((deal) => (
+              <div key={deal.id} className="flex items-center gap-4 p-3 bg-gray-700 rounded-lg border border-gray-600">
+                <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                  <FileText size={20} className="text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">{deal.dealId}</p>
+                  <p className="text-xs text-gray-400">{deal.propertyAddress}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-amber-400">{deal.offerPrice}</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">{deal.dealId}</p>
-                <p className="text-xs text-gray-400">{deal.propertyAddress}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-amber-400">{deal.offerPrice}</p>
-              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-400 py-8">
+              <FileText size={48} className="mx-auto mb-4 text-gray-600" />
+              <p>No recent deals found</p>
             </div>
-          ))}
+          )}
         </div>
       </motion.div>
     </motion.div>

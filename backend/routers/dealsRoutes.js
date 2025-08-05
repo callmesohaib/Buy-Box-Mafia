@@ -24,6 +24,9 @@ router.get("/:id/matches", dealsController.getDealMatches);
 // Get potential buyers count for all deals
 router.get("/potential-buyers/count", dealsController.getPotentialBuyersCount);
 
+// Get overview analytics data
+router.get("/analytics/overview", dealsController.getOverviewAnalytics);
+
 // Add a new deal
 router.post("/", dealsController.addDeal);
 
