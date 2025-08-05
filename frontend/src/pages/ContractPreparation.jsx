@@ -21,7 +21,15 @@ export default function ContractPreparation() {
   const initialStep = parseInt(query.get('step')) || 0;
   const [currentStep, setCurrentStepState] = useState(initialStep);
   const [isLoading, setIsLoading] = useState(false);
-  const initialContractData = (location.state && location.state.contractData) ? location.state.contractData : {};
+  const defaultDropdowns = {
+    financingType: "Cash",
+    surveyRequired: "Yes",
+    titleInsurance: "Yes",
+    inspectionPeriod: "7 days",
+  };
+  const initialContractData = (location.state && location.state.contractData)
+    ? { ...defaultDropdowns, ...location.state.contractData }
+    : { ...defaultDropdowns };
   const [contractData, setContractData] = useState(initialContractData);
   const [errors, setErrors] = useState({});
   const mlsNumber = dealId;
