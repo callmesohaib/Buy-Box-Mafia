@@ -18,7 +18,8 @@ import {
   X
 } from "lucide-react"
 import { pageVariants, pageTransition } from "../../../animations/animation"
-import dealsData from '../../../data/deals.json';
+// import dealsData from '../../../data/deals.json';
+import { getDeals } from "../../../services/dealsService"
 
 
 const statusColors = {
@@ -44,13 +45,13 @@ const ALL_STATUSES = [
   "Draft"
 ]
 
-export default function DealsTable({ deals = dealsData }) {
+export default function DealsTable() {
   const navigate = useNavigate()
   const [search, setSearch] = useState("")
   const [county, setCounty] = useState("")
   const [status, setStatus] = useState("")
   const [scout, setScout] = useState("")
-  const [dealList, setDealList] = useState(deals)
+  const [dealList, setDealList] = useState([])
   const [statusEditId, setStatusEditId] = useState(null)
   const [newStatus, setNewStatus] = useState("")
 
@@ -92,6 +93,19 @@ export default function DealsTable({ deals = dealsData }) {
   const handleViewDeal = (id) => {
     navigate(`/admin/deals/${id}/view`)
   }
+  useEffect(() => {
+    // Fetch deals from service
+    const fetchDeals = async () => {
+      try {
+        const fetchedDeals = await getDeals()
+        console.log("Fetched deals:", fetchedDeals)
+        setDealList(fetchedDeals)
+      } catch (error) {
+        console.error("Error fetching deals:", error)
+      }
+    }
+    fetchDeals()
+  }, [])
 
   // Add refs and click outside handler for dropdown:
   const editBtnRef = useRef(null)
@@ -190,7 +204,7 @@ export default function DealsTable({ deals = dealsData }) {
               </div>
             </div>
             <div className="flex items-center text-sm text-gray-400 mb-4">
-              <span className="mr-2">👤 Scout: {deal.scout}</span>
+              <span className="mr-2">👤 Scout: {deal.scoutName}</span>
             </div>
             {/* Above the action buttons, add a dropdown input for changing status: */}
             <div className="mb-3">

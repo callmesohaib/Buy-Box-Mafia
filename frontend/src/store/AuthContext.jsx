@@ -24,7 +24,6 @@ export function AuthProvider({ children }) {
                 body: JSON.stringify({ email, password }),
             });
             const data = await res.json();
-            console.log("Login response:", data);
             if (res.ok && data.success) {
                 localStorage.setItem("isLoggedIn", "true");
                 localStorage.setItem("role", data.user.role);
@@ -67,7 +66,6 @@ export function AuthProvider({ children }) {
         navigate("/login");
     };
 
-    // ✅ Memoize the context value to prevent re-renders
     const authValue = useMemo(() => ({
         isAuthenticated,
         user,
