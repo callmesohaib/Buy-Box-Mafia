@@ -21,7 +21,7 @@ import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider } from "./store/AuthContext";
+import { AuthProvider, useAuth } from "./store/AuthContext";
 import './index.css';
 
 function ScrollToTop() {
@@ -42,27 +42,20 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 function AppContent() {
   const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
   const isAdminPage =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/subadmin");
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    localStorage.getItem("isLoggedIn") === "true"
-  );
-  const [userRole, setUserRole] = useState(localStorage.getItem("role"));
+  
+  const isLoggedIn = isAuthenticated;
+  const userRole = user?.role;
 
-  useEffect(() => {
-    const syncLoginState = () => {
-      setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true");
-      setUserRole(localStorage.getItem("role"));
-    };
-    window.addEventListener("storage", syncLoginState);
-    return () => window.removeEventListener("storage", syncLoginState);
-  }, []);
-
-  useEffect(() => {
-    setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true");
-    setUserRole(localStorage.getItem("role"));
-  }, [location]);
+  console.log("AppContent - Auth state:", {
+    isAuthenticated,
+    userRole,
+    location: location.pathname,
+    user: user ? { name: user.name, role: user.role } : null
+  });
 
   if (!isLoggedIn) {
     // Allow unauthenticated access to login, register, forgot-password, and reset-password
@@ -84,14 +77,18 @@ function AppContent() {
     );
   }
 
-  if (
-    isLoggedIn &&
-    (location.pathname === "/login" || location.pathname === "/register")
-  ) {
-    if (userRole === "admin") return <Navigate to="/admin" replace />;
-    if (userRole === "subadmin")
-      return <Navigate to="/subadmin/buyer" replace />;
-    return <Navigate to="/property-search" replace />;
+  if (isLoggedIn) {
+    if (location.pathname === "/login" || location.pathname === "/register") {
+      if (userRole === "admin") return <Navigate to="/admin" replace />;
+      if (userRole === "subadmin") return <Navigate to="/subadmin/buyer" replace />;
+      return <Navigate to="/property-search" replace />;
+    }
+    
+    if (location.pathname === "/") {
+      if (userRole === "admin") return <Navigate to="/admin" replace />;
+      if (userRole === "subadmin") return <Navigate to="/subadmin/buyer" replace />;
+      return <Navigate to="/property-search" replace />;
+    }
   }
 
   return (
@@ -105,10 +102,6 @@ function AppContent() {
               <PropertySearch />
             </ProtectedRoute>
           } />
-          <Route
-            path="/"
-            element={<Navigate to="/property-search" replace />}
-          />
           <Route path="/valuation/:id" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <ValuationResult />

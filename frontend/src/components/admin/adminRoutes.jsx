@@ -10,6 +10,7 @@ import DealDetail from "./deal/DealDetail"
 import AdminDashboard from "../../pages/AdminDashboard"
 import SubadminsPanel from "./subadmin/SubadminsPanel"
 import SubadminForm from "./subadmin/SubadminForm"
+import NotFound from "../../pages/NotFound"
 
 export default function AdminRoutes() {
     return (
@@ -30,6 +31,7 @@ export default function AdminRoutes() {
                 <Route path="subadmin" element={<SubadminsPanel  />} />
                 <Route path="subadmin/new_subadmin" element={<SubadminForm />} />
                 <Route path="subadmin/edit/:id" element={<SubadminForm />} />
+                <Route path="*" element={<NotFound />} />
             </Route>
         </Routes>
     )
