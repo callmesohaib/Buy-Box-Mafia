@@ -14,5 +14,7 @@ router.get('/callback', (req, res) => {
 });
 router.get('/download-signed/:envelopeId', docusignController.downloadSignedDocument);
 router.post('/send-to-seller', docusignController.sendToSeller);
+router.get('/seller-envelope-status/:envelopeId', docusignController.getSellerEnvelopeStatus);
+router.get('/download-seller-signed/:envelopeId', docusignController.downloadSellerSignedDocument);
 
 module.exports = router;

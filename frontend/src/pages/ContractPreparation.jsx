@@ -364,9 +364,10 @@ export default function ContractPreparation() {
                   Go Back to Preview
                 </button>
               </div>
-            </div>
-          );
-        }
+                </div>
+  );
+}
+
         // Pass envelopeId and signingUrl as props
         return <SignatureStep envelopeId={contractData.envelopeId} signingUrl={contractData.signingUrl} />
       case 3:
@@ -494,11 +495,17 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
   }, [envelopeId]);
 
   const handleSendToSeller = async () => {
-    // Try multiple possible locations for seller email
+    // Try multiple possible locations for seller email and name
     const sellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
+    const sellerName = contractData?.sellerName || contractData?.seller?.name || contractData?.formData?.sellerName;
 
     if (!sellerEmail || !sellerEmail.trim()) {
       alert('Seller email not found in contract data. Please go back and fill in the seller email.');
+      return;
+    }
+
+    if (!sellerName || !sellerName.trim()) {
+      alert('Seller name not found in contract data. Please go back and fill in the seller name.');
       return;
     }
 
@@ -519,7 +526,11 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
         body: JSON.stringify({
           envelopeId: envelopeId,
           sellerEmail: sellerEmail.trim(),
-          contractData: contractData
+          contractData: {
+            ...contractData,
+            sellerName: sellerName.trim(),
+            sellerEmail: sellerEmail.trim()
+          }
         }),
       });
 
@@ -527,6 +538,10 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
 
       if (response.ok) {
         setSendToSellerStatus('success');
+        // Store the seller envelope ID for future reference
+        if (data.sellerEnvelopeId) {
+          sessionStorage.setItem(`sellerEnvelopeId_${contractData?.dealId || 'default'}`, data.sellerEnvelopeId);
+        }
       } else {
         setSendToSellerStatus('error');
         alert(data.error || 'Failed to send contract to seller');
@@ -539,8 +554,9 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
     }
   };
 
-  // Check if seller email exists in any form
+  // Check if seller email and name exist in any form
   const hasSellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
+  const hasSellerName = contractData?.sellerName || contractData?.seller?.name || contractData?.formData?.sellerName;
 
   return (
     <div className="text-center mt-12">
@@ -574,37 +590,193 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
       <div className="mt-4">
         <button
           onClick={handleSendToSeller}
-          disabled={!envelopeId || !hasSellerEmail || isSendingToSeller}
+          disabled={!envelopeId || !hasSellerEmail || !hasSellerName || isSendingToSeller}
           className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSendingToSeller ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
-              Sending...
+              Sending to Seller...
             </>
           ) : (
-            'Send to Seller'
+            '📧 Send to Seller for Signature'
           )}
         </button>
 
-        {!hasSellerEmail && (
+        {(!hasSellerEmail || !hasSellerName) && (
           <p className="text-[var(--secondary-gray-text)] text-sm mt-2">
-            Seller email not found. Please go back and fill in the seller email in the form.
+            {!hasSellerEmail && !hasSellerName && "Seller email and name not found. Please go back and fill in the seller information in the form."}
+            {!hasSellerEmail && hasSellerName && "Seller email not found. Please go back and fill in the seller email in the form."}
+            {hasSellerEmail && !hasSellerName && "Seller name not found. Please go back and fill in the seller name in the form."}
           </p>
         )}
       </div>
 
       {/* Status Messages */}
       {sendToSellerStatus === 'success' && (
-        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg max-w-md mx-auto">
-          <p className="text-green-400 text-sm">Contract sent to seller successfully!</p>
+        <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg max-w-md mx-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-green-400 font-semibold">Contract Sent Successfully!</p>
+          </div>
+          <p className="text-green-400 text-sm">
+            An email with a signing link has been sent to {contractData?.sellerEmail || 'the seller'}. 
+            They can now review and sign the contract directly from their email.
+          </p>
+          
+          {/* Seller Signing Status Check */}
+          <SellerSigningStatus 
+            sellerEnvelopeId={sessionStorage.getItem(`sellerEnvelopeId_${contractData?.dealId || 'default'}`)}
+            dealId={contractData?.dealId}
+          />
         </div>
       )}
 
       {sendToSellerStatus === 'error' && (
-        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
-          <p className="text-red-400 text-sm">Failed to send contract. Please try again.</p>
+        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-red-400 font-semibold">Failed to Send Contract</p>
+          </div>
+          <p className="text-red-400 text-sm">Please try again or contact support if the problem persists.</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Component to check seller signing status
+function SellerSigningStatus({ sellerEnvelopeId, dealId }) {
+  const [status, setStatus] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const checkStatus = async () => {
+    if (!sellerEnvelopeId) return;
+    
+    setIsChecking(true);
+    try {
+      const response = await fetch(`http://localhost:3001/api/docusign/seller-envelope-status/${sellerEnvelopeId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setStatus(data);
+      } else {
+        console.error('Failed to check status:', data.error);
+      }
+    } catch (error) {
+      console.error('Error checking status:', error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const downloadFullySigned = async () => {
+    if (!sellerEnvelopeId) return;
+    
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`http://localhost:3001/api/docusign/download-seller-signed/${sellerEnvelopeId}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Fully-Signed-Contract.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      } else {
+        alert('Failed to download fully signed contract');
+      }
+    } catch (error) {
+      alert('Error downloading contract');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Auto-check status when component mounts
+  useEffect(() => {
+    if (sellerEnvelopeId) {
+      checkStatus();
+      // Set up periodic checking every 30 seconds
+      const interval = setInterval(checkStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [sellerEnvelopeId]);
+
+  if (!sellerEnvelopeId) return null;
+
+  return (
+    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-blue-400 font-semibold text-sm">Seller Signing Status</h4>
+        <button
+          onClick={checkStatus}
+          disabled={isChecking}
+          className="text-blue-400 hover:text-blue-300 text-xs disabled:opacity-50"
+        >
+          {isChecking ? 'Checking...' : 'Refresh'}
+        </button>
+      </div>
+      
+      {status ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${
+              status.completed ? 'bg-green-500' : 'bg-yellow-500'
+            }`}></div>
+            <span className="text-blue-400 text-sm">
+              Status: {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
+            </span>
+          </div>
+          
+          {status.completed ? (
+            <div className="space-y-2">
+              <p className="text-green-400 text-sm">
+                ✅ Seller has signed the contract!
+              </p>
+              {status.completedDateTime && (
+                <p className="text-blue-400 text-xs">
+                  Completed: {new Date(status.completedDateTime).toLocaleString()}
+                </p>
+              )}
+              <button
+                onClick={downloadFullySigned}
+                disabled={isDownloading}
+                className="w-full bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDownloading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+                    Downloading...
+                  </>
+                ) : (
+                  '📄 Download Fully Signed Contract'
+                )}
+              </button>
+            </div>
+          ) : (
+            <p className="text-yellow-400 text-sm">
+              ⏳ Waiting for seller to sign the contract...
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="text-blue-400 text-sm">
+          Checking signing status...
+        </p>
       )}
     </div>
   );
