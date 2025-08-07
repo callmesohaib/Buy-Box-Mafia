@@ -12,22 +12,9 @@ export function AuthProvider({ children }) {
         const role = localStorage.getItem("role");
         const id = localStorage.getItem("uid") || localStorage.getItem("userId");
         const phone = localStorage.getItem("phone") || "";
-
-        // Debug logging to help identify the issue
-        console.log("AuthContext initialization:", {
-            name, email, role, id, phone,
-            hasName: !!name,
-            hasEmail: !!email,
-            hasRole: !!role,
-            hasId: !!id
-        });
-
-        // Only require essential fields (name, email, role, id) - phone can be empty
         return name && email && role && id ? { name, email, role, id, phone } : null;
     });
     const navigate = useNavigate();
-
-    // Sync authentication state on mount
     useEffect(() => {
         const token = localStorage.getItem("token");
         const name = localStorage.getItem("name");
@@ -36,19 +23,9 @@ export function AuthProvider({ children }) {
         const id = localStorage.getItem("uid") || localStorage.getItem("userId");
         const phone = localStorage.getItem("phone") || "";
 
-        console.log("AuthContext useEffect - checking auth state:", {
-            token: !!token,
-            name: !!name,
-            email: !!email,
-            role,
-            id: !!id,
-            isLoggedIn: localStorage.getItem("isLoggedIn")
-        });
-
         if (token && name && email && role && id) {
             setIsAuthenticated(true);
             setUser({ name, email, role, id, phone });
-            // Ensure isLoggedIn is set for App.jsx compatibility
             localStorage.setItem("isLoggedIn", "true");
         }
     }, []);

@@ -137,12 +137,13 @@ export default function DealSubmission() {
 
   // Build parcelData from contractData (from navigation state or formData)
   const contractData = location.state?.contractData || formData || {};
+  console.log(contractData)
   const parcelData = {
     id: dealId || contractData.dealId || 'N/A',
     address: contractData.propertyAddress || contractData.address || 'N/A',
-    parcelId: contractData.parcelId || contractData.mlsNumber || 'N/A',
+    parcelId: contractData.apn || contractData.apn || 'N/A',
     size: contractData.size || contractData.propertySize || 'N/A',
-    zoning: contractData.class || contractData.propertyClass || 'N/A',
+    zoning: contractData.propertyZoning || contractData.propertyZoning || 'N/A',
     currentValue: contractData.currentValue || contractData.propertyPrice || 'N/A',
     estimatedValue: contractData.estimatedValue || contractData.listPrice || 'N/A',
     owner: contractData.owner || contractData.sellerName || 'N/A',

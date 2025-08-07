@@ -46,16 +46,10 @@ function AppContent() {
   const isAdminPage =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/subadmin");
-  
+
   const isLoggedIn = isAuthenticated;
   const userRole = user?.role;
 
-  console.log("AppContent - Auth state:", {
-    isAuthenticated,
-    userRole,
-    location: location.pathname,
-    user: user ? { name: user.name, role: user.role } : null
-  });
 
   if (!isLoggedIn) {
     // Allow unauthenticated access to login, register, forgot-password, and reset-password
@@ -83,7 +77,7 @@ function AppContent() {
       if (userRole === "subadmin") return <Navigate to="/subadmin/buyer" replace />;
       return <Navigate to="/property-search" replace />;
     }
-    
+
     if (location.pathname === "/") {
       if (userRole === "admin") return <Navigate to="/admin" replace />;
       if (userRole === "subadmin") return <Navigate to="/subadmin/buyer" replace />;
@@ -102,14 +96,14 @@ function AppContent() {
               <PropertySearch />
             </ProtectedRoute>
           } />
-          <Route path="/valuation/:id" element={
+          <Route path="/valuation/:address1/:address2" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <ValuationResult />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/contract/:dealId" element={
+          <Route path="/contract/:address1/:address2" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <ContractPreparation />
             </ProtectedRoute>
@@ -142,6 +136,9 @@ function AppContent() {
   );
 }
 
+// App.jsx
+import { PropertyProvider } from './store/PropertyContext';
+
 function App() {
   return (
     <>
@@ -156,11 +153,12 @@ function App() {
       />
       <Router>
         <AuthProvider>
-          <AppContent />
+          <PropertyProvider>
+            <AppContent />
+          </PropertyProvider>
         </AuthProvider>
       </Router>
     </>
   );
 }
-
 export default App;

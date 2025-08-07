@@ -22,6 +22,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
     }
   }
 
+  console.log("Form Data:", formData);
   // Minimalist section card style
   const sectionClass =
     "bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"
@@ -105,7 +106,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               <input
                 type="text"
                 name="scoutCompany"
-                value={formData.scoutCompany || "Buy Box Mafia"}
+                value="Buy Box Mafia"
                 onChange={handleInputChange}
                 className={inputBase + " pl-10"}
                 placeholder="Company name"
@@ -257,7 +258,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <input
               type="text"
               name="propertyZoning"
-              value={formData.propertyClass || ""}
+              value={formData.propertyZoning || ""}
               onChange={handleInputChange}
               className={inputBase}
               placeholder="e.g. Residential"

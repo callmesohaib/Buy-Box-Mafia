@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useParams, useNavigate } from "react-router-dom"
+import { useProperty } from "../store/PropertyContext"
 import {
   MapPin,
   DollarSign,
@@ -38,147 +39,165 @@ import {
 } from "../animations/animation"
 
 export default function ValuationResult() {
-
-  const { id: mlsNumber } = useParams()
+  const { address1, address2 } = useParams()
   const navigate = useNavigate()
-  const [propertyData, setPropertyData] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { propertyData, clearProperty, updateProperty } = useProperty()
+  const [isLoading, setIsLoading] = useState(!propertyData)
   const [activeTab, setActiveTab] = useState('top')
   const [buyers, setBuyers] = useState([])
   const [buyersLoading, setBuyersLoading] = useState(true)
   const [buyersError, setBuyersError] = useState(null)
   const [matchedBuyers, setMatchedBuyers] = useState([])
 
-  const PROPERTY_IMAGE_URL = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_3.jpg';
+  const attomKey = import.meta.env.VITE_ATTOM_API_KEY;
+  const attomUrl = import.meta.env.VITE_ATTOM_API_URL;
 
-  // Format helpers
-  const formatValue = (val) => (val === undefined || val === null || val === "" ? "N/A" : val);
-  const formatBudget = (min, max) => {
-    if (min && max) return `$${min} - $${max}`;
-    if (min) return `From $${min}`;
-    if (max) return `Up to $${max}`;
-    return "N/A";
-  };
-  const formatList = (val) => {
-    if (!val) return "N/A";
-    if (Array.isArray(val)) return val.join(", ");
-    return val;
-  };
+  const PROPERTY_IMAGE_URL = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80'
 
-  // Fetch property data from Repliers API by MLS number
-  useEffect(() => {
-    if (!mlsNumber) return;
+  async function fetchProperty() {
     setIsLoading(true);
-    setPropertyData(null);
-    fetch(`https://api.repliers.io/listings/${mlsNumber}`, {
-      headers: {
-        'REPLIERS-API-KEY': '41MCTXQRjF5HUStcQkFuNfYhGU56Je',
-        'accept': 'application/json',
-      },
-    })
+    try {
+      const apiUrl = `${attomUrl}?address1=${encodeURIComponent(address1)}${address2 ? `&address2=${encodeURIComponent(address2)}` : ''}`;
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'apikey': attomKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.property && data.property.length > 0) {
+        updateProperty(data.property[0]);
+      } else {
+        clearProperty();
+        setBuyersError("No property found");
+      }
+    } catch (error) {
+      console.error("Error fetching property:", error);
+      setBuyersError("Failed to fetch property");
+    } 
+  }
+
+  useEffect(() => {
+    if (!propertyData) {
+      fetchProperty();
+    }
+  }, []);
+  const formatValue = (val) => (val === undefined || val === null || val === "" ? "N/A" : val)
+  const formatBudget = (min, max) => {
+    if (min && max) return `$${min} - $${max}`
+    if (min) return `From $${min}`
+    if (max) return `Up to $${max}`
+    return "N/A"
+  }
+  const formatList = (val) => {
+    if (!val) return "N/A"
+    if (Array.isArray(val)) return val.join(", ")
+    return val
+  }
+  const formatSize = (size) => {
+    if (!size) return 'Size not available';
+    return `${size.bldgSize || size.livingSize || size.universalSize || 'N/A'} sqft`;
+  };
+
+
+  const formatAddress = (addressObj) => {
+    if (!addressObj) return 'Address not available'
+    return addressObj.oneLine || [addressObj.line1, addressObj.line2].filter(Boolean).join(', ')
+  }
+
+  useEffect(() => {
+    if (!propertyData) return
+
+    setBuyersLoading(true)
+    setIsLoading(true)
+    setBuyersError(null)
+
+    fetch("http://localhost:3001/api/buyers")
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch property');
-        return res.json();
+        if (!res.ok) throw new Error("Failed to fetch buyers")
+        return res.json()
       })
       .then((data) => {
-        setPropertyData(data);
-        setIsLoading(false);
+        setBuyers(data)
+        const matches = data
+          .map(buyer => ({
+            ...buyer,
+            matchPercent: calculateBuyerMatch(propertyData, buyer)
+          }))
+          .filter(b => b.matchPercent > 0)
+          .sort((a, b) => b.matchPercent - a.matchPercent)
+        setMatchedBuyers(matches)
+        setBuyersLoading(false)
+        setIsLoading(false)
       })
       .catch((e) => {
-        setPropertyData(null);
-        setIsLoading(false);
-      });
-  }, [mlsNumber]);
+        setBuyersError(e.message)
+        setBuyers([])
+        setMatchedBuyers([])
+        setBuyersLoading(false)
+        setIsLoading(false)
+      })
+  }, [propertyData])
 
-
-  // Helper: calculate match percentage between property and buyer
   function calculateBuyerMatch(property, buyer) {
-    if (!property || !buyer) return 0;
-    let score = 0;
-    let total = 0;
+    if (!property || !buyer) return 0
+    let score = 0
+    let total = 0
 
     // 1. City match
-    total++;
+    total++
     if (
-      property.address?.city &&
+      property.address?.locality &&
       buyer.city &&
-      property.address.city.toLowerCase() === buyer.city.toLowerCase()
-    ) score++;
+      property.address.locality.toLowerCase() === buyer.city.toLowerCase()
+    ) score++
 
     // 2. Country match
-    total++;
+    total++
     if (
       property.address?.country &&
       buyer.country &&
       property.address.country.toLowerCase() === buyer.country.toLowerCase()
-    ) score++;
+    ) score++
 
     // 3. Class match (property.class vs buyer.zoningTypes)
-    total++;
+    total++
     if (
-      property.class &&
+      property.summary?.propClass &&
       buyer.zoningTypes &&
       Array.isArray(buyer.zoningTypes) &&
-      buyer.zoningTypes.map(z => z.toLowerCase()).includes(property.class.toLowerCase())
-    ) score++;
+      buyer.zoningTypes.map(z => z.toLowerCase()).includes(property.summary.propClass.toLowerCase())
+    ) score++
 
     // 4. Buying locations (property city in buyer.buyingLocations)
-    total++;
+    total++
     if (
-      property.address?.city &&
+      property.address?.locality &&
       buyer.buyingLocations &&
       Array.isArray(buyer.buyingLocations) &&
-      buyer.buyingLocations.map(l => l.toLowerCase()).includes(property.address.city.toLowerCase())
-    ) score++;
+      buyer.buyingLocations.map(l => l.toLowerCase()).includes(property.address.locality.toLowerCase())
+    ) score++
 
-    // 5. Budget match (property.originalPrice between buyer.budgetMin and buyer.budgetMax)
-    total++;
-    const price = Number(property.originalPrice || property.listPrice);
-    const min = Number(buyer.budgetMin);
-    const max = Number(buyer.budgetMax);
-    if (!isNaN(price) && !isNaN(min) && !isNaN(max) && price >= min && price <= max) score++;
-    else if (!isNaN(price) && !isNaN(min) && isNaN(max) && price >= min) score++;
-    else if (!isNaN(price) && isNaN(min) && !isNaN(max) && price <= max) score++;
-
-    // Return percentage
-    return Math.round((score / total) * 100);
+    // 5. Budget match (property price between buyer.budgetMin and buyer.budgetMax)
+    total++
+    const price = Number(property.sale?.amount?.saleAmt || property.listPrice)
+    const min = Number(buyer.budgetMin)
+    const max = Number(buyer.budgetMax)
+    if (!isNaN(price) && !isNaN(min) && !isNaN(max) && price >= min && price <= max) score++
+    else if (!isNaN(price) && !isNaN(min) && isNaN(max) && price >= min) score++
+    else if (!isNaN(price) && isNaN(min) && !isNaN(max) && price <= max) score++
+    return Math.round((score / total) * 100)
   }
 
-  // Fetch buyers from API and calculate matches
-  useEffect(() => {
-    setBuyersLoading(true);
-    setBuyersError(null);
-    fetch("http://localhost:3001/api/buyers")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch buyers");
-        return res.json();
-      })
-      .then((data) => {
-        setBuyers(data);
-        // Calculate matches if propertyData is available
-        if (propertyData) {
-          const matches = data
-            .map(buyer => ({
-              ...buyer,
-              matchPercent: calculateBuyerMatch(propertyData, buyer)
-            }))
-            .filter(b => b.matchPercent > 0)
-            .sort((a, b) => b.matchPercent - a.matchPercent);
-          setMatchedBuyers(matches);
-        }
-        setBuyersLoading(false);
-      })
-      .catch((e) => {
-        setBuyersError(e.message);
-        setBuyers([]);
-        setMatchedBuyers([]);
-        setBuyersLoading(false);
-      });
-  }, [propertyData]);
-
   const handlePrepareDealPackage = () => {
-    // Pass matched buyers data to the contract preparation page
-    navigate(`/contract/${mlsNumber}`, {
+    navigate(`/contract/${address1}/${address2}`, {
       state: {
         matchedBuyers: matchedBuyers,
         buyersCount: matchedBuyers.length,
@@ -187,8 +206,7 @@ export default function ValuationResult() {
     })
   }
 
-  // Show loading spinner until BOTH property and buyers are loaded
-  if (isLoading || buyersLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
         <div className="text-center">
@@ -196,7 +214,7 @@ export default function ValuationResult() {
           <p className="text-[var(--secondary-gray-text)]">Loading property analysis...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!propertyData) {
@@ -212,7 +230,7 @@ export default function ValuationResult() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -244,7 +262,7 @@ export default function ValuationResult() {
             variants={textReveal}
             className="text-[var(--secondary-gray-text)] text-base sm:text-lg"
           >
-            Comprehensive analysis for {propertyData.address?.streetNumber} {propertyData.address?.streetName} {propertyData.address?.streetSuffix}, {propertyData.address?.city}, {propertyData.address?.state} {propertyData.address?.zip}
+            Comprehensive analysis for {formatAddress(propertyData.address)}
           </motion.p>
         </motion.div>
 
@@ -259,22 +277,21 @@ export default function ValuationResult() {
             <div className="relative">
               <img
                 src={PROPERTY_IMAGE_URL}
-                alt={formatValue(propertyData.address?.streetName) || 'Property'}
+                alt={propertyData.address?.oneLine || 'Property'}
                 className="w-full h-64 sm:h-80 lg:h-full object-cover"
-                onError={e => { e.target.src = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_2.jpg'; }}
+                onError={e => { e.target.src = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_2.jpg' }}
               />
               <div className="absolute top-4 left-4 bg-[var(--mafia-red)] text-white px-3 py-1 rounded-lg text-sm font-medium">
-                {propertyData.class}
+                {propertyData.lot?.zoningType || 'Property'}
               </div>
             </div>
 
             <div className="p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
-                {propertyData.address?.streetNumber} {propertyData.address?.streetName} {propertyData.address?.streetSuffix}, {propertyData.address?.city}, {propertyData.address?.state} {propertyData.address?.zip}
+                {formatAddress(propertyData.address)}
               </h2>
 
               {/* Buyer Match Alert */}
-              {/* Example Buyer Match Alert (static, since API does not provide this) */}
               <motion.div
                 variants={fadeInUp}
                 initial="initial"
@@ -289,16 +306,12 @@ export default function ValuationResult() {
                 </div>
                 <p className="text-green-200 text-sm mb-3">
                   There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
-                  We can sell it to them for <span className="font-bold">${propertyData.listPrice}</span>.
+                  We can sell it to them for <span className="font-bold">{propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}</span>.
                 </p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <TrendingUp size={14} className="text-green-300" />
-                    <span className="text-green-200">List Price: ${propertyData.listPrice}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <TrendingDown size={14} className="text-[var(--mafia-red)]" />
-                    <span className="text-[var(--mafia-red)]">Original Price: ${propertyData.originalPrice}</span>
+                    <span className="text-green-200">List Price: {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}</span>
                   </div>
                 </div>
               </motion.div>
@@ -310,7 +323,9 @@ export default function ValuationResult() {
                   </div>
                   <div>
                     <p className="text-sm text-[var(--secondary-gray-text)]">List Price</p>
-                    <p className="text-lg font-bold text-white">${propertyData.listPrice}</p>
+                    <p className="text-lg font-bold text-white">
+                      {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
@@ -320,7 +335,9 @@ export default function ValuationResult() {
                   </div>
                   <div>
                     <p className="text-sm text-[var(--secondary-gray-text)]">Lot Size</p>
-                    <p className="text-lg font-bold text-white">{propertyData.lot?.width} x {propertyData.lot?.depth} {propertyData.lot?.measurement}</p>
+                    <p className="text-lg font-bold text-white">
+                      {propertyData.lot?.lotSize1 ? `${propertyData.lot.lotSize1} acres` : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
@@ -330,7 +347,9 @@ export default function ValuationResult() {
                   </div>
                   <div>
                     <p className="text-sm text-[var(--secondary-gray-text)]">Type</p>
-                    <p className="text-lg font-bold text-white">{propertyData.details?.propertyType}</p>
+                    <p className="text-lg font-bold text-white">
+                      {propertyData.lot?.zoningType || 'N/A'}
+                    </p>
                   </div>
                 </div>
 
@@ -339,8 +358,10 @@ export default function ValuationResult() {
                     <Calendar size={18} className="text-orange-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-[var(--secondary-gray-text)]">List Date</p>
-                    <p className="text-lg font-bold text-white">{propertyData.listDate ? new Date(propertyData.listDate).toLocaleDateString() : '-'}</p>
+                    <p className="text-sm text-[var(--secondary-gray-text)]">Year Built</p>
+                    <p className="text-lg font-bold text-white">
+                      {propertyData.summary?.yearBuilt || 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -354,16 +375,11 @@ export default function ValuationResult() {
                   <span className="hidden sm:inline">Prepare Deal Package</span>
                   <span className="sm:hidden">Deal Package</span>
                 </button>
-                <button className="px-4 py-3 border border-[var(--tertiary-gray-bg)] text-[var(--primary-gray-text)] rounded-xl hover:bg-[var(--tertiary-gray-bg)] transition-colors flex items-center justify-center gap-2">
-                  <Share2 size={18} />
-                  <span>Share</span>
-                </button>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Resale Estimate (API does not provide, so show price and status) */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -380,27 +396,24 @@ export default function ValuationResult() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-900/30 rounded-xl border border-green-700">
-                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.listPrice}</div>
+                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.sale.amount.saleAmt.toLocaleString()}</div>
                 <div className="text-sm text-green-200 font-medium mb-2">List Price</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-green-300">
-                  <Timer size={12} />
-                  {propertyData.status}
+
                 </div>
               </div>
               <div className="text-center p-4 bg-yellow-900/30 rounded-xl border border-yellow-700">
-                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.details?.numBedrooms} Bed</div>
+                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.building?.rooms?.beds}</div>
                 <div className="text-sm text-yellow-200 font-medium mb-2">Bedrooms</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-yellow-300">
-                  <Timer size={12} />
-                  {propertyData.details?.numBathrooms} Bath
+
                 </div>
               </div>
               <div className="text-center p-4 bg-purple-900/30 rounded-xl border border-purple-700">
-                <div className="text-2xl font-bold text-purple-300 mb-1">{propertyData.details?.sqft}</div>
-                <div className="text-sm text-purple-200 font-medium mb-2">Sqft</div>
+                <div className="text-2xl font-bold text-purple-300 mb-1">{formatSize(propertyData.building?.size)}</div>
+                <div className="text-sm text-purple-200 font-medium mb-2">Size</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-purple-300">
-                  <Timer size={12} />
-                  {propertyData.details?.style}
+
                 </div>
               </div>
             </div>
@@ -408,7 +421,6 @@ export default function ValuationResult() {
         </motion.div>
 
 
-        {/* Buyers Table with Match Percentage */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -520,12 +532,16 @@ export default function ValuationResult() {
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Status</span>
-                <span className="text-green-400 font-semibold">{propertyData.status}</span>
+                <span className="text-[var(--primary-gray-text)] font-medium">Total Market Value</span>
+                <span className="text-[var(--mafia-red)] font-semibold">${propertyData.assessment.market.mktTtlValue}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Description</span>
-                <span className="text-white font-semibold truncate max-w-xs">{formatValue(propertyData.details?.description)}</span>
+                <span className="text-[var(--primary-gray-text)] font-medium">Land Value</span>
+                <span className="text-white font-semibold truncate max-w-xs">${propertyData.assessment.market.mktLandValue}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Improvement Value</span>
+                <span className="text-white font-semibold">${propertyData.assessment.market.mktImprValue}</span>
               </div>
             </div>
           </motion.div>
@@ -546,15 +562,15 @@ export default function ValuationResult() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Taxes</span>
-                <span className="text-green-400 font-semibold">${formatValue(propertyData.taxes?.annualAmount)}</span>
+                <span className="text-green-400 font-semibold">${propertyData.assessment.tax?.taxAmt}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Assessment Year</span>
-                <span className="text-white font-semibold">{formatValue(propertyData.taxes?.assessmentYear)}</span>
+                <span className="text-[var(--primary-gray-text)] font-medium">Tax Year</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.assessment.tax?.taxYear)}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <span className="text-[var(--primary-gray-text)] font-medium">Coop Compensation</span>
-                <span className="text-green-400 font-semibold">{formatValue(propertyData.coopCompensation)}</span>
+                <span className="text-[var(--primary-gray-text)] font-medium">Unit</span>
+                <span className="text-white font-semibold">{propertyData.assessment.tax?.taxPerSizeUnit}</span>
               </div>
             </div>
           </motion.div>
@@ -581,30 +597,30 @@ export default function ValuationResult() {
               </motion.div>
               <h3 className="text-xl font-semibold text-white">Property Features</h3>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Air Conditioning: {formatValue(propertyData.details?.airConditioning)}</span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Heating Fuel</span>
+                <span className="text-purple-500 font-semibold">{propertyData.utilities?.heatingFuel}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Basement: {formatValue(propertyData.details?.basement1)} {formatValue(propertyData.details?.basement2)}</span>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Heating</span>
+                <span className="text-white font-semibold">{propertyData.utilities?.heatingType}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Garage: {formatValue(propertyData.details?.garage)}</span>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Cooling</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.utilities?.coolingtype)}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Heating: {formatValue(propertyData.details?.heating)}</span>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Swimming Pool</span>
+                <span className="text-white font-semibold">{propertyData.lot?.poolType.toLocaleString()}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Swimming Pool: {formatValue(propertyData.details?.swimmingPool)}</span>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Built Year</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.summary?.yearBuilt)}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-[var(--tertiary-gray-bg)] rounded-xl">
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                <span className="text-[var(--primary-gray-text)]">Water Source: {formatValue(propertyData.details?.waterSource)}</span>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Condition</span>
+                <span className="text-white font-semibold">{propertyData.building?.construction.condition}</span>
               </div>
             </div>
           </motion.div>
@@ -623,23 +639,30 @@ export default function ValuationResult() {
               <h3 className="text-xl font-semibold text-white">Rooms</h3>
             </div>
             <div className="space-y-4">
-              {propertyData.rooms && propertyData.rooms.length > 0 ? propertyData.rooms.slice(0, 6).map((room, idx) => (
-                <div key={idx} className="p-4 bg-[var(--tertiary-gray-bg)] rounded-xl border border-[var(--quaternary-gray-bg)]">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-white">{formatValue(room.description)}</h4>
-                    <span className="text-orange-500 font-bold">{formatValue(room.length)} x {formatValue(room.width)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-[var(--secondary-gray-text)]">
-                    <span>{formatValue(room.level)}</span>
-                    <span>{formatValue(room.features)}</span>
-                  </div>
-                </div>
-              )) : <div className="text-[var(--secondary-gray-text)]">No room data available.</div>}
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Bath Fixtures</span>
+                <span className="text-orange-500 font-semibold">{formatValue(propertyData.building?.rooms?.bathFixtures)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Full Baths</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.building?.rooms?.bathsFull)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Total Baths</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.building?.rooms?.bathsTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Bedrooms</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.building?.rooms?.beds)}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
+                <span className="text-[var(--primary-gray-text)] font-medium">Total Rooms</span>
+                <span className="text-white font-semibold">{formatValue(propertyData.building?.rooms?.roomsTotal)}</span>
+              </div>
             </div>
           </motion.div>
         </motion.div>
 
-        {/* Aerial View (show map if available) */}
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -652,7 +675,7 @@ export default function ValuationResult() {
             <p className="text-[var(--secondary-gray-text)] text-sm sm:text-base">Satellite imagery and property boundaries</p>
           </div>
           <div className="p-4 sm:p-6 lg:p-8">
-            {propertyData.map?.latitude && propertyData.map?.longitude ? (
+            {propertyData.location?.latitude && propertyData.location?.longitude ? (
               <iframe
                 title="Map"
                 width="100%"
@@ -660,7 +683,7 @@ export default function ValuationResult() {
                 style={{ border: 0, borderRadius: '1rem' }}
                 loading="lazy"
                 allowFullScreen
-                src={`https://www.google.com/maps?q=${propertyData.map.latitude},${propertyData.map.longitude}&z=16&output=embed`}
+                src={`https://www.google.com/maps?q=${propertyData.location.latitude},${propertyData.location.longitude}&z=16&output=embed`}
               ></iframe>
             ) : (
               <div className="text-[var(--secondary-gray-text)]">No map data available.</div>
