@@ -74,17 +74,6 @@ export default function MyDeals() {
     }
   }
 
-  const getStatusIcon = (dealStatus) => {
-    const status = (dealStatus || "").trim().toLowerCase();
-    switch (status) {
-      case "draft": return <FileText size={16} />;
-      case "pending": return <Clock size={16} />;
-      case "offer": return <AlertCircle size={16} />;
-      case "closed": return <CheckCircle size={16} />;
-      default: return <FileText size={16} />;
-    }
-  }
-
   const filterDealsByDateRange = (deal) => {
     if (!startDate && !endDate) return true;
 
@@ -133,9 +122,13 @@ export default function MyDeals() {
     }
   }
 
-  const handleEditDeal = (dealId) => {
-    navigate(`/contract/${dealId}`)
-  }
+  const handleEditDeal = (deal) => {
+    navigate(`/contract/${encodeURIComponent(deal.propertyAddress)}`, {
+      state: {
+        contractData: deal
+      }
+    });
+  };
 
   const clearDateRange = () => {
     setStartDate(null);
@@ -421,7 +414,7 @@ export default function MyDeals() {
                   {/* Compact Header */}
                   <div className="px-4 pt-4 pb-3 border-b border-[var(--tertiary-gray-bg)] flex justify-between items-center">
                     <div>
-                      <h3 className="font-medium text-white">{deal.dealId}</h3>
+                      <h3 className="font-medium text-white">{deal.apn}</h3>
                       <p className="text-xs text-[var(--secondary-gray-text)] mt-0.5">{deal.propertyZoning}</p>
                     </div>
                     <span className={`text-xs px-2.5 py-1 rounded-full ${getStatusColor(deal.status)}`}>
@@ -499,7 +492,7 @@ export default function MyDeals() {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handleEditDeal(deal.propertyAddress)}
+                        onClick={() => handleEditDeal(deal)}
                         className="p-1.5 border text-white border-[var(--tertiary-gray-bg)] rounded hover:bg-[var(--tertiary-gray-bg)]"
                         aria-label="Edit deal"
                       >
