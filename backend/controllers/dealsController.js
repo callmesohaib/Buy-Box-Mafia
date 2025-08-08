@@ -28,13 +28,10 @@ const toFirestoreDeal = (body) => {
       body.propertyZoning,
       safe(body.propertyClass, "Not mention")
     ),
-    propertyClass: safe(body.propertyClass, ""),
     propertySize: safe(body.propertySize, ""),
     apn: safe(body.apn, ""),
-    mlsNumber: safe(body.mlsNumber, ""),
-    listPrice: safe(body.listPrice, ""),
     listDate: safe(body.listDate, ""),
-    status: safe(body.status, "Pending"), // Default to "Pending" from dropdown
+    status: safe(body.status, "Pending"), 
 
     // Offer Details
     offerPrice: safe(body.propertyPrice, ""),
@@ -54,7 +51,7 @@ const toFirestoreDeal = (body) => {
 
     // Deal Status - use the same status from dropdown
     dealStatus: safe(body.status, "Pending"), // Use the same status from dropdown
-    dealId: safe(body.mlsNumber, ""),
+    dealId: safe(body.dealId, ""),
 
     // File Upload (store file name or null, not the file object)
     contractFile:
