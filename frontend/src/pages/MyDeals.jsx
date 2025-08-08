@@ -410,72 +410,102 @@ export default function MyDeals() {
               variants={staggerContainer}
               initial="initial"
               animate="animate"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
             >
-              {sortedDeals.map((deal, index) => (
+              {sortedDeals.map((deal) => (
                 <motion.div
                   key={deal.id}
                   variants={staggerItem}
-                  className="bg-[var(--secondary-gray-bg)] rounded-xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)] hover:shadow-md transition-all duration-200"
+                  className="bg-[var(--secondary-gray-bg)] rounded-lg border border-[var(--tertiary-gray-bg)] hover:border-[var(--mafia-red)]/30 transition-all duration-200 hover:shadow-md"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  {/* Compact Header */}
+                  <div className="px-4 pt-4 pb-3 border-b border-[var(--tertiary-gray-bg)] flex justify-between items-center">
                     <div>
-                      <h3 className="font-semibold text-white">{deal.dealId}</h3>
-                      <p className="text-sm text-[var(--secondary-gray-text)]">{deal.propertyType}</p>
+                      <h3 className="font-medium text-white">{deal.dealId}</h3>
+                      <p className="text-xs text-[var(--secondary-gray-text)] mt-0.5">{deal.propertyZoning}</p>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(deal.status)}`}>
-                      {getStatusIcon(deal.status)}
+                    <span className={`text-xs px-2.5 py-1 rounded-full ${getStatusColor(deal.status)}`}>
                       {deal.status}
                     </span>
                   </div>
-                  <div className="space-y-3 mb-4">
+
+                  {/* Compact Body */}
+                  <div className="p-4 space-y-3">
+                    {/* Property Address */}
                     <div className="flex items-start gap-2">
-                      <MapPin size={16} className="text-[var(--placeholder-gray)] mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-[var(--primary-gray-text)] line-clamp-2">{deal.propertyAddress}</p>
+                      <MapPin size={16} className="text-[var(--mafia-red)] mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-white">{deal.propertyAddress}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <User size={16} className="text-[var(--placeholder-gray)]" />
-                      <p className="text-sm text-[var(--primary-gray-text)]">{deal.sellerName}</p>
-                      <Mail size={16} className="text-[var(--placeholder-gray)]" />
-                      <p className="text-sm text-[var(--primary-gray-text)]">{deal.sellerEmail}</p>
+
+                    {/* Seller Info */}
+                    <div className="space-y-1">
+                      {/* Seller Name */}
+                      <div className="flex items-center gap-2">
+                        <User size={16} className="text-[var(--mafia-red)] flex-shrink-0" />
+                        <p className="text-sm text-white">{deal.sellerName}</p>
+                      </div>
+
+                      {/* Seller Email */}
+                      <div className="flex items-center gap-2">
+                        <Mail size={16} className="text-[var(--mafia-red)] flex-shrink-0" />
+                        <p className="text-sm text-[var(--secondary-gray-text)]">{deal.sellerEmail}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign size={16} className="text-[var(--placeholder-gray)]" />
-                      <p className="text-sm font-medium text-white">{deal.offerPrice}</p>
+
+                    {/* Financial Info - Compact Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <DollarSign size={16} className="text-[var(--mafia-red)]" />
+                        <div>
+                          <p className="text-xs text-[var(--secondary-gray-text)]">Price</p>
+                          <p className="text-sm font-medium text-white">{deal.offerPrice}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-[var(--mafia-red)]" />
+                        <div>
+                          <p className="text-xs text-[var(--secondary-gray-text)]">Closing</p>
+                          <p className="text-sm text-white">
+                            {new Date(deal.closingDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <FileText size={16} className="text-[var(--placeholder-gray)]" />
-                      <p className="text-sm text-[var(--primary-gray-text)]">Inspection Period: {deal.inspectionPeriod || 'N/A'}</p>
+
+                    {/* Inspection Period */}
+                    <div className="flex items-center justify-between bg-[var(--tertiary-gray-bg)]/30 px-3 py-2 rounded">
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-[var(--secondary-gray-text)]" />
+                        <span className="text-xs text-[var(--primary-gray-text)]">Inspection</span>
+                      </div>
+                      <span className="text-xs font-medium text-white">
+                        {deal.inspectionPeriod || 'N/A'}
+                      </span>
                     </div>
                   </div>
-                  {/* Dates */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-xs text-[var(--secondary-gray-text)]">
-                      <Clock size={14} />
-                      <span>Closing: {new Date(deal.closingDate).toLocaleDateString()}</span>
+
+                  {/* Compact Footer */}
+                  <div className="px-4 pb-4 pt-2">
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleViewDetails(deal.id)}
+                        className="flex-1 text-sm px-3 py-1.5 bg-[var(--mafia-red)] text-white rounded hover:bg-[var(--mafia-red-hover)] flex items-center justify-center gap-1"
+                      >
+                        <Eye size={14} />
+                        View
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleEditDeal(deal.propertyAddress)}
+                        className="p-1.5 border text-white border-[var(--tertiary-gray-bg)] rounded hover:bg-[var(--tertiary-gray-bg)]"
+                        aria-label="Edit deal"
+                      >
+                        <Edit size={16} />
+                      </motion.button>
                     </div>
-                  </div>
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <motion.button
-                      variants={buttonHover}
-                      whileHover="whileHover"
-                      whileTap="whileTap"
-                      onClick={() => handleViewDetails(deal.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[var(--mafia-red)] text-white text-sm rounded-lg hover:bg-[var(--mafia-red-hover)] transition-colors"
-                    >
-                      <Eye size={16} />
-                      View
-                    </motion.button>
-                    <motion.button
-                      variants={buttonHover}
-                      whileHover="whileHover"
-                      whileTap="whileTap"
-                      onClick={() => handleEditDeal(deal.dealId)}
-                      className="px-3 py-2 border border-[var(--tertiary-gray-bg)] text-[var(--primary-gray-text)] text-sm rounded-lg hover:bg-[var(--tertiary-gray-bg)] transition-colors"
-                    >
-                      <Edit size={16} />
-                    </motion.button>
                   </div>
                 </motion.div>
               ))}

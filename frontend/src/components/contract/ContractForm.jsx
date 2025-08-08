@@ -22,7 +22,6 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
     }
   }
 
-  console.log("Form Data:", formData);
   // Minimalist section card style
   const sectionClass =
     "bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"

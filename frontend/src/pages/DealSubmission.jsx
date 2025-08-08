@@ -1,121 +1,129 @@
-import { useState, useEffect } from "react"
-import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import { useAuth } from "../store/AuthContext"
-import {
-  ChevronLeft,
-  Upload,
-  FileText,
-  MapPin,
-  User,
-  Building,
-  AlertCircle,
-  CheckCircle,
-  X,
-  Send,
-  Download,
-  Eye,
-  Users
-} from "lucide-react"
-import {
-  fadeInUp,
-  fadeInDown,
-  scaleIn,
-  modalBackdrop,
-  modalContent,
-  buttonHover,
-  staggerContainer,
-  staggerItem
-} from "../animations/animation"
-import { addDeal } from "../services/dealsService"
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../store/AuthContext";
+import { ChevronLeft, Upload, FileText, MapPin, User, Building, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
+import { addDeal } from "../services/dealsService";
+import { useProperty } from "../store/PropertyContext";
+import { fadeInDown, staggerContainer, staggerItem, buttonHover, modalBackdrop, modalContent } from "../animations/animation";
 
 export default function DealSubmission() {
-  const removeFile = () => {
-    setSelectedFile(null);
-    setFormData(prev => ({
-      ...prev,
-      contractFile: null
-    }));
-  }
   const { user } = useAuth();
-  const { id: urlId } = useParams();
+  const { fullAddress } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+
+  const { fetchProperty, clearProperty, propertyData } = useProperty();
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const location = useLocation();
-  const dealId = location.state?.dealId || urlId;
+  const [localPropertyData, setLocalPropertyData] = useState(null); 
+
+  const dealId = location.state?.dealId;
   const initialFormData = location.state?.contractData
     ? {
       ...location.state.contractData,
-      status: "pending", // Always use "Pending" as default from dropdown
+      status: "pending",
       scoutNotes: location.state.contractData.scoutNotes || "",
       contractFile: null,
-      // Preserve buyer data from contract preparation
       matchedBuyers: location.state.contractData.matchedBuyers || [],
-      buyersCount: location.state.contractData.buyersCount || 0,
+      buyersCount: location.state.contractData.matchedBuyers?.length || 0,
       buyerIds: location.state.contractData.buyerIds || []
     }
     : {
-      status: "pending", // Always use "Pending" as default
+      status: "pending",
       scoutNotes: "",
       contractFile: null,
       matchedBuyers: [],
       buyersCount: 0,
       buyerIds: []
     };
+
   const [formData, setFormData] = useState(initialFormData);
 
-  console.log("DealSubmission formData:", formData);
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (fullAddress) {
+        try {
+          const query = decodeURIComponent(fullAddress);
+          const data = await fetchProperty(query);
+          if (isMounted) {
+            setLocalPropertyData(data);
+          }
+        } catch (err) {
+          console.error("Error fetching property:", err);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+      clearProperty();
+    };
+    // Empty dependency array ensures this runs only once on mount
+  }, []);
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+
     if (location.state?.contractData) {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         ...location.state.contractData,
-        status: "pending", // Always use "Pending" from dropdown, ignore API status
+        status: "pending",
         scoutNotes: location.state.contractData.scoutNotes || "",
         scoutName: user?.name,
         scoutEmail: user?.email,
         scoutPhone: user?.phone || "",
         Company: user?.company || "Buy Box Mafia",
         submittedBy: user?.id || user?.uid,
-        // Preserve buyer data
         matchedBuyers: location.state.contractData.matchedBuyers || prev.matchedBuyers || [],
-        buyersCount: location.state.contractData.buyersCount || prev.buyersCount || 0,
+        buyersCount: location.state.contractData.matchedBuyers?.length || 0,
         buyerIds: location.state.contractData.buyerIds || prev.buyerIds || []
       }));
     }
-    // eslint-disable-next-line
-  }, [location.state?.contractData]);
+  }, [location.state?.contractData, user]);
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    setFormData(prev => ({
+      ...prev,
+      contractFile: null
+    }));
+  };
 
   const statusOptions = [
     "Pending",
     "Closed",
     "Cancelled",
     "Expired"
-  ]
+  ];
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }))
-  }
+    }));
+  };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file && file.type === "application/pdf") {
-      setSelectedFile(file)
+      setSelectedFile(file);
       setFormData(prev => ({
         ...prev,
         contractFile: file
-      }))
+      }));
     } else {
-      alert("Please select a valid PDF file")
+      alert("Please select a valid PDF file");
     }
-  }
+  };
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -127,17 +135,15 @@ export default function DealSubmission() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   const handleConfirmSubmit = () => {
-    setShowModal(false)
-    navigate("/property-search")
-  }
+    setShowModal(false);
+    navigate("/property-search");
+  };
 
-
-  // Build parcelData from contractData (from navigation state or formData)
   const contractData = location.state?.contractData || formData || {};
-  console.log(contractData)
+console.log("PropertyData:", propertyData)
   const parcelData = {
     id: dealId || contractData.dealId || 'N/A',
     address: contractData.propertyAddress || contractData.address || 'N/A',
@@ -145,20 +151,19 @@ export default function DealSubmission() {
     size: contractData.size || contractData.propertySize || 'N/A',
     zoning: contractData.propertyZoning || contractData.propertyZoning || 'N/A',
     currentValue: contractData.currentValue || contractData.propertyPrice || 'N/A',
-    estimatedValue: contractData.estimatedValue || contractData.listPrice || 'N/A',
+    earnestMoney: contractData.earnestMoney || contractData.EarnestMoney || 'N/A',
     owner: contractData.owner || contractData.sellerName || 'N/A',
     ownerPhone: contractData.sellerPhone || 'N/A',
     ownerEmail: contractData.sellerEmail || 'N/A',
     lastContact: contractData.lastContact || 'N/A',
-    propertyType: contractData.propertyType || 'N/A',
+    propertyType: propertyData.summary?.propertyType || 'N/A',
     utilities: contractData.utilities || 'N/A',
     roadAccess: contractData.roadAccess || 'N/A',
     topography: contractData.topography || 'N/A',
     floodZone: contractData.floodZone || 'N/A',
-    taxAssessedValue: contractData.taxAssessedValue || 'N/A',
-    annualTaxes: contractData.annualTaxes || 'N/A'
+    taxAssessedValue: propertyData.assessment.assessed?.assdTtlValue || 'N/A',
+    annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
   };
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -197,13 +202,13 @@ export default function DealSubmission() {
             variants={staggerItem}
             className="lg:col-span-2"
           >
-            <div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]">
+            <div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-4 shadow-sm border border-[var(--tertiary-gray-bg)]">
               <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
                 <MapPin size={24} className="text-[var(--mafia-red)]" />
                 Parcel Summary
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Basic Information */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-[var(--tertiary-gray-bg)] rounded-lg">
@@ -235,20 +240,16 @@ export default function DealSubmission() {
                     <span className="text-sm font-semibold text-[var(--green)]">{parcelData.currentValue}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[var(--tertiary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Estimated Value</span>
-                    <span className="text-sm font-semibold text-[var(--gold)]">{parcelData.estimatedValue}</span>
+                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Earn Value</span>
+                    <span className="text-sm font-semibold text-[var(--gold)]">{parcelData.earnestMoney}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Tax Assessed</span>
+                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Assessed Value</span>
                     <span className="text-sm text-white">{parcelData.taxAssessedValue}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
                     <span className="text-sm font-medium text-[var(--primary-gray-text)]">Annual Taxes</span>
                     <span className="text-sm text-white">{parcelData.annualTaxes}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Flood Zone</span>
-                    <span className="text-sm text-white">{parcelData.floodZone}</span>
                   </div>
                 </div>
               </div>
@@ -262,13 +263,13 @@ export default function DealSubmission() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
                     <span className="text-sm font-medium text-[var(--primary-gray-text)]">Matched Buyers</span>
-                    <span className="text-sm font-semibold text-green-400">{formData.buyersCount || 0}</span>
+                    <span className="text-sm font-semibold text-green-400">{formData.matchedBuyers.length || 0}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
                     <span className="text-sm font-medium text-[var(--primary-gray-text)]">Top Match Score</span>
                     <span className="text-sm font-semibold text-[var(--gold)]">
-                      {formData.matchedBuyers && formData.matchedBuyers.length > 0 
-                        ? `${formData.matchedBuyers[0].matchPercent}%` 
+                      {formData.matchedBuyers && formData.matchedBuyers.length > 0
+                        ? `${formData.matchedBuyers[0].matchPercent}%`
                         : 'N/A'}
                     </span>
                   </div>
@@ -281,7 +282,7 @@ export default function DealSubmission() {
                   <User size={20} className="text-[var(--mafia-red)]" />
                   Owner Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
                     <span className="text-sm font-medium text-[var(--primary-gray-text)]">Owner</span>
                     <span className="text-sm text-white">{parcelData.owner}</span>
@@ -296,36 +297,9 @@ export default function DealSubmission() {
                   </div>
                 </div>
               </div>
-
-              {/* Property Details */}
-              <div className="mt-6 pt-6 border-t border-[var(--tertiary-gray-bg)]">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Building size={20} className="text-[var(--mafia-red)]" />
-                  Property Details
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Utilities</span>
-                    <span className="text-sm text-white">{parcelData.utilities}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Road Access</span>
-                    <span className="text-sm text-white">{parcelData.roadAccess}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Topography</span>
-                    <span className="text-sm text-white">{parcelData.topography}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Last Contact</span>
-                    <span className="text-sm text-white">{parcelData.lastContact}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </motion.div>
 
-          {/* Submission Form */}
           <motion.div
             variants={staggerItem}
             className="space-y-6"
@@ -497,5 +471,5 @@ export default function DealSubmission() {
         )}
       </AnimatePresence>
     </motion.div>
-  )
-} 
+  );
+}

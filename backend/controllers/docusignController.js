@@ -155,9 +155,10 @@ exports.createEnvelope = async (req, res) => {
 
     const firstRecipient = req.body.recipients[0];
     const viewRequest = new docusign.RecipientViewRequest();
-
-    const dealId = req.body.dealId || "C12312181";
-    const dynamicRedirectUrl = `http://localhost:5173/contract/${dealId}?step=3`;
+    const address = req.body.fullAddress;
+    console.log("Full Address:", address);
+    // const dealId = req.body.dealId || "C12312181";
+    const dynamicRedirectUrl = `http://localhost:5173/contract/${address}?step=3`;
     viewRequest.returnUrl = dynamicRedirectUrl;
 
     viewRequest.authenticationMethod = "none";
@@ -202,11 +203,11 @@ exports.getSigningUrl = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
-
+console.log("dealid", req.query.dealId)
     const viewRequest = new docusign.RecipientViewRequest();
 
     viewRequest.returnUrl = `http://localhost:5173/contract/${
-      req.query.dealId || "C12312181"
+      req.query.dealId
     }?step=3`;
     viewRequest.authenticationMethod = "none";
     viewRequest.email = "sohaib@gmail.com";
@@ -325,7 +326,7 @@ exports.sendToSeller = async (req, res) => {
           tabs: {
             signHereTabs: [
               {
-                anchorString: "/sn2/", 
+                anchorString: "/sn2/",
                 anchorYOffset: "10",
                 anchorUnits: "pixels",
                 anchorXOffset: "20",

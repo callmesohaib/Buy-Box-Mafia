@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { useParams, useNavigate } from "react-router-dom"
-import { useProperty } from "../store/PropertyContext"
+import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import { useParams, useNavigate } from "react-router-dom";
+import { useProperty } from "../store/PropertyContext";
 import {
   MapPin,
   DollarSign,
@@ -9,230 +9,174 @@ import {
   Calendar,
   TrendingUp,
   FileText,
-  Download,
-  Share2,
   ArrowLeft,
-  Star,
-  Eye,
-  Clock,
-  Building,
-  Users,
-  Target,
-  CheckCircle,
   UserCheck,
-  Award,
-  TrendingDown,
   Zap,
-  Timer
-} from "lucide-react"
-
+  Award,
+  Users,
+  Building,
+  Target,
+  CheckCircle
+} from "lucide-react";
 import {
   fadeInUp,
-  staggerContainer,
-  staggerItem,
-  scaleInBounce,
   heroAnimation,
   textReveal,
   slideInUp,
   gridContainer,
-  gridItem
-} from "../animations/animation"
+  gridItem,
+  scaleInBounce
+} from "../animations/animation";
 
 export default function ValuationResult() {
-  const { address1, address2 } = useParams()
-  const navigate = useNavigate()
-  const { propertyData, clearProperty, updateProperty } = useProperty()
-  const [isLoading, setIsLoading] = useState(!propertyData)
-  const [activeTab, setActiveTab] = useState('top')
-  const [buyers, setBuyers] = useState([])
-  const [buyersLoading, setBuyersLoading] = useState(true)
-  const [buyersError, setBuyersError] = useState(null)
-  const [matchedBuyers, setMatchedBuyers] = useState([])
+  const { fullAddress } = useParams();
+  const navigate = useNavigate();
+  const { propertyData, loading, error, fetchProperty, clearProperty } = useProperty();
 
-  const attomKey = import.meta.env.VITE_ATTOM_API_KEY;
-  const attomUrl = import.meta.env.VITE_ATTOM_API_URL;
+  const [buyers, setBuyers] = useState([]);
+  const [buyersLoading, setBuyersLoading] = useState(true);
+  const [buyersError, setBuyersError] = useState(null);
+  const [matchedBuyers, setMatchedBuyers] = useState([]);
+  const [activeTab, setActiveTab] = useState('top');
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  const PROPERTY_IMAGE_URL = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80'
+  const PROPERTY_IMAGE_URL = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
 
-  async function fetchProperty() {
-    setIsLoading(true);
-    try {
-      const apiUrl = `${attomUrl}?address1=${encodeURIComponent(address1)}${address2 ? `&address2=${encodeURIComponent(address2)}` : ''}`;
+  const calculateBuyerMatch = useCallback((property, buyer) => {
+    if (!property || !buyer) return 0;
+    
+    let score = 0, total = 0;
+    const zoning = Array.isArray(buyer.zoningTypes) ? 
+      buyer.zoningTypes : 
+      buyer.zoningTypes ? [buyer.zoningTypes] : [];
+    
+    const locations = Array.isArray(buyer.buyingLocations) ? 
+      buyer.buyingLocations : 
+      buyer.buyingLocations ? [buyer.buyingLocations] : [];
 
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'apikey': attomKey
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.property && data.property.length > 0) {
-        updateProperty(data.property[0]);
-      } else {
-        clearProperty();
-        setBuyersError("No property found");
-      }
-    } catch (error) {
-      console.error("Error fetching property:", error);
-      setBuyersError("Failed to fetch property");
-    } 
-  }
-
-  useEffect(() => {
-    if (!propertyData) {
-      fetchProperty();
+    // City match
+    total++; 
+    if (property.address?.locality?.toLowerCase() === buyer.city?.toLowerCase()) score++;
+    
+    // Country match
+    total++; 
+    if (property.address?.country?.toLowerCase() === buyer.country?.toLowerCase()) score++;
+    
+    // Class match
+    total++; 
+    if (zoning.some(z => z?.toLowerCase() === property.summary?.propClass?.toLowerCase())) score++;
+    
+    // Locations match
+    total++; 
+    if (locations.some(l => l?.toLowerCase() === property.address?.locality?.toLowerCase())) score++;
+    
+    // Budget match
+    total++;
+    const price = Number(property.sale?.amount?.saleAmt);
+    const min = Number(buyer.budgetMin);
+    const max = Number(buyer.budgetMax);
+    
+    if (!isNaN(price)) {
+      if (!isNaN(min) && !isNaN(max) && price >= min && price <= max) score++;
+      else if (!isNaN(min) && isNaN(max) && price >= min) score++;
+      else if (isNaN(min) && !isNaN(max) && price <= max) score++;
     }
+    
+    return Math.round((score / total) * 100);
   }, []);
-  const formatValue = (val) => (val === undefined || val === null || val === "" ? "N/A" : val)
-  const formatBudget = (min, max) => {
-    if (min && max) return `$${min} - $${max}`
-    if (min) return `From $${min}`
-    if (max) return `Up to $${max}`
-    return "N/A"
-  }
-  const formatList = (val) => {
-    if (!val) return "N/A"
-    if (Array.isArray(val)) return val.join(", ")
-    return val
-  }
-  const formatSize = (size) => {
-    if (!size) return 'Size not available';
-    return `${size.bldgSize || size.livingSize || size.universalSize || 'N/A'} sqft`;
-  };
-
-
-  const formatAddress = (addressObj) => {
-    if (!addressObj) return 'Address not available'
-    return addressObj.oneLine || [addressObj.line1, addressObj.line2].filter(Boolean).join(', ')
-  }
 
   useEffect(() => {
-    if (!propertyData) return
+    if (fullAddress && initialLoad) {
+      const query = decodeURIComponent(fullAddress);
+      fetchProperty(query);
+      setInitialLoad(false);
+    }
+  }, [fullAddress, fetchProperty, initialLoad]);
 
-    setBuyersLoading(true)
-    setIsLoading(true)
-    setBuyersError(null)
+  
+  useEffect(() => {
+    if (!propertyData) return;
 
-    fetch("http://localhost:3001/api/buyers")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch buyers")
-        return res.json()
-      })
-      .then((data) => {
-        setBuyers(data)
+    const fetchBuyers = async () => {
+      setBuyersLoading(true);
+      setBuyersError(null);
+      
+      try {
+        const response = await fetch("http://localhost:3001/api/buyers");
+        if (!response.ok) throw new Error("Failed to fetch buyers");
+        
+        const data = await response.json();
+        setBuyers(data);
+        
         const matches = data
           .map(buyer => ({
             ...buyer,
             matchPercent: calculateBuyerMatch(propertyData, buyer)
           }))
           .filter(b => b.matchPercent > 0)
-          .sort((a, b) => b.matchPercent - a.matchPercent)
-        setMatchedBuyers(matches)
-        setBuyersLoading(false)
-        setIsLoading(false)
-      })
-      .catch((e) => {
-        setBuyersError(e.message)
-        setBuyers([])
-        setMatchedBuyers([])
-        setBuyersLoading(false)
-        setIsLoading(false)
-      })
-  }, [propertyData])
-
-  function calculateBuyerMatch(property, buyer) {
-    if (!property || !buyer) return 0
-    let score = 0
-    let total = 0
-
-    // 1. City match
-    total++
-    if (
-      property.address?.locality &&
-      buyer.city &&
-      property.address.locality.toLowerCase() === buyer.city.toLowerCase()
-    ) score++
-
-    // 2. Country match
-    total++
-    if (
-      property.address?.country &&
-      buyer.country &&
-      property.address.country.toLowerCase() === buyer.country.toLowerCase()
-    ) score++
-
-    // 3. Class match (property.class vs buyer.zoningTypes)
-    total++
-    if (
-      property.summary?.propClass &&
-      buyer.zoningTypes &&
-      Array.isArray(buyer.zoningTypes) &&
-      buyer.zoningTypes.map(z => z.toLowerCase()).includes(property.summary.propClass.toLowerCase())
-    ) score++
-
-    // 4. Buying locations (property city in buyer.buyingLocations)
-    total++
-    if (
-      property.address?.locality &&
-      buyer.buyingLocations &&
-      Array.isArray(buyer.buyingLocations) &&
-      buyer.buyingLocations.map(l => l.toLowerCase()).includes(property.address.locality.toLowerCase())
-    ) score++
-
-    // 5. Budget match (property price between buyer.budgetMin and buyer.budgetMax)
-    total++
-    const price = Number(property.sale?.amount?.saleAmt || property.listPrice)
-    const min = Number(buyer.budgetMin)
-    const max = Number(buyer.budgetMax)
-    if (!isNaN(price) && !isNaN(min) && !isNaN(max) && price >= min && price <= max) score++
-    else if (!isNaN(price) && !isNaN(min) && isNaN(max) && price >= min) score++
-    else if (!isNaN(price) && isNaN(min) && !isNaN(max) && price <= max) score++
-    return Math.round((score / total) * 100)
-  }
-
-  const handlePrepareDealPackage = () => {
-    navigate(`/contract/${address1}/${address2}`, {
-      state: {
-        matchedBuyers: matchedBuyers,
-        buyersCount: matchedBuyers.length,
-        buyerIds: matchedBuyers.map(buyer => buyer.id).filter(Boolean)
+          .sort((a, b) => b.matchPercent - a.matchPercent);
+        
+        setMatchedBuyers(matches);
+      } catch (err) {
+        console.error("Buyer fetch error:", err);
+        setBuyersError(err.message);
+      } finally {
+        setBuyersLoading(false);
       }
-    })
-  }
+    };
 
-  if (isLoading) {
+    fetchBuyers();
+  }, [propertyData, calculateBuyerMatch]);
+
+  const handlePrepareDealPackage = useCallback(() => {
+    navigate(
+      `/contract/${encodeURIComponent(fullAddress)}`,
+      { state: { matchedBuyers, buyerIds: matchedBuyers.map(b => b.id) } }
+    );
+  }, [navigate, fullAddress, matchedBuyers]);
+
+  // Format helpers
+  const formatValue = val => val ?? 'N/A';
+  const formatBudget = (min, max) => 
+    min && max ? `$${min} - $${max}` :
+    min ? `From $${min}` :
+    max ? `Up to $${max}` : 'N/A';
+  
+  const formatAddress = addr => 
+    addr?.oneLine || [addr?.line1, addr?.line2].filter(Boolean).join(', ');
+  
+  const formatSize = size => 
+    `${size?.bldgSize || size?.livingSize || size?.universalSize || 'N/A'} sqft`;
+
+  // Loading and error states
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--mafia-red)] mx-auto mb-4"></div>
-          <p className="text-[var(--secondary-gray-text)]">Loading property analysis...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-gray-800">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--mafia-red)]"></div>
+          <p className="text-white">Loading property data...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  if (!propertyData) {
+  if (error || !propertyData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-[var(--secondary-gray-text)] mb-4">Property not found</p>
-          <button
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-gray-800">
+        <div className="text-center p-6 bg-[var(--secondary-gray-bg)] rounded-xl">
+          <p className="text-[var(--mafia-red)] mb-4">
+            {error || 'Property not found'}
+          </p>
+          <button 
             onClick={() => navigate('/property-search')}
-            className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-xl hover:bg-[var(--mafia-red-hover)] transition-colors"
+            className="bg-[var(--mafia-red)] text-white px-6 py-2 rounded-lg hover:bg-[var(--mafia-red-dark)] transition-colors"
           >
             Back to Search
           </button>
         </div>
       </div>
-    )
+    );
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--from-bg)] to-[var(--secondary-gray-bg)] font-inter">
       <div className="w-[90%] mx-auto py-6 sm:py-8">

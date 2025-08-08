@@ -2,15 +2,8 @@ import { motion } from "framer-motion"
 import { FileText, Download } from "lucide-react"
 import { fadeInUp, fadeInLeft, fadeInRight } from "../../animations/animation"
 import jsPDF from "jspdf";
-import { useAuth } from "../../store/AuthContext";
 
-// Exportable PDF generator
 export function generateContractPDF(contractData, formData) {
-  // const { user } = useAuth();
-  // console.log(user)
-
-  console.log("FormData", formData)
-  console.log("ContractData", contractData)
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: '2-digit', day: '2-digit'
   });
@@ -116,7 +109,6 @@ export default function ContractPreview({ contractData, formData, dealId, isLoad
 
 
 
-  // Download PDF handler
   const handleDownloadPDF = () => {
     const doc = generateContractPDF(contractData, formData);
     doc.save('Purchase-And-Sales-Agreement.pdf');
@@ -216,7 +208,6 @@ export default function ContractPreview({ contractData, formData, dealId, isLoad
       animate="animate"
       className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full relative"
     >
-      {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center z-10">
           <div className="bg-[var(--secondary-gray-bg)] rounded-lg p-6 text-center">
@@ -226,7 +217,6 @@ export default function ContractPreview({ contractData, formData, dealId, isLoad
           </div>
         </div>
       )}
-      {/* Contract Preview */}
       <motion.div
         variants={fadeInLeft}
         className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"
@@ -255,7 +245,6 @@ export default function ContractPreview({ contractData, formData, dealId, isLoad
         </div>
       </motion.div>
 
-      {/* Summary */}
       <motion.div
         variants={fadeInRight}
         className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"
@@ -264,7 +253,7 @@ export default function ContractPreview({ contractData, formData, dealId, isLoad
         <div className="space-y-4">
           <div className="flex items-center justify-between p-3 bg-[var(--tertiary-gray-bg)] rounded-lg">
             <span className="text-sm font-medium text-[var(--primary-gray-text)]">Deal ID</span>
-            <span className="text-sm font-semibold text-[var(--mafia-red)]">#{dealId}</span>
+            <span className="text-sm font-semibold text-[var(--mafia-red)]">#{contractData.dealId}</span>
           </div>
           <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
             <span className="text-sm font-medium text-[var(--primary-gray-text)]">Property</span>

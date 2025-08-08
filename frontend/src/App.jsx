@@ -96,19 +96,22 @@ function AppContent() {
               <PropertySearch />
             </ProtectedRoute>
           } />
-          <Route path="/valuation/:address1/:address2" element={
-            <ProtectedRoute allowedRoles={["scout"]}>
-              <ValuationResult />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/valuation/:fullAddress/*"
+            element={
+              <ProtectedRoute allowedRoles={["scout"]}>
+                <ValuationResult />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/contract/:address1/:address2" element={
+          <Route path="/contract/:fullAddress" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <ContractPreparation />
             </ProtectedRoute>
           } />
-          <Route path="/submit/:id" element={
+          <Route path="/submit/:fullAddress" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <DealSubmission />
             </ProtectedRoute>

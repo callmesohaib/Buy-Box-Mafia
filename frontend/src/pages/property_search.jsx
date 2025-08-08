@@ -1,391 +1,266 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Hash, Home, Bed, Bath, Ruler, Layers, Calendar } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useProperty } from "../store/PropertyContext";
-import {
-  fadeInUp,
-  heroAnimation,
-  textReveal,
-  slideInUp
-} from "../animations/animation";
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Home, Bed, Bath, Ruler, Layers, Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useProperty } from '../store/PropertyContext';
+import { fadeInUp, heroAnimation, textReveal, slideInUp } from '../animations/animation';
 
 export default function PropertySearch() {
   const navigate = useNavigate();
   const {
+    searchValue,
+    setSearchValue,
     propertyData,
     loading,
     error,
-    updateProperty,
-    setLoading,
-    setError,
+    fetchProperty,
     clearProperty
   } = useProperty();
-  const formatAddress = (addressObj) => {
-    if (!addressObj) return 'Address not available';
-    return addressObj.oneLine || [addressObj.line1, addressObj.line2].filter(Boolean).join(', ');
-  };
 
-  const formatPrice = (price) => {
-    if (!price) return 'Price not available';
-    return `$${Number(price).toLocaleString()}`;
-  };
+  const [hasSearched, setHasSearched] = useState(false);
+  const initialSearch = !hasSearched && !loading;
 
-  const formatSize = (size) => {
-    if (!size) return 'Size not available';
-    return `${size.bldgSize || size.livingSize || size.universalSize || 'N/A'} sqft`;
-  };
+  // Format helpers
+  const formatAddress = (addressObj) =>
+    addressObj?
+      addressObj.oneLine || [addressObj.line1, addressObj.line2].filter(Boolean).join(', ')
+      : 'Address not available';
+  const formatPrice = (price) => price? `$${Number(price).toLocaleString()}` : 'Price not available';
+  const formatSize = (size) =>
+    size? `${size.bldgSize || size.livingSize || size.universalSize || 'N/A'} sqft`
+        : 'Size not available';
 
-  const propertyObject = propertyData ? {
+  const propertyObject = propertyData && ({
     id: propertyData.identifier?.attomId || propertyData.identifier?.Id || 'N/A',
     apn: propertyData.identifier?.apn || 'N/A',
-    city: propertyData.address?.locality || 'City not available',
-    country: propertyData.address?.country || 'Country not available',
-    title: propertyData.address?.oneLine || 'Property Listing',
     address: propertyData.address,
     price: formatPrice(propertyData.sale?.amount?.saleAmt),
     size: formatSize(propertyData.building?.size),
     zoningType: propertyData.lot?.zoningType || propertyData.summary?.propertyType || 'Property',
     propertyType: propertyData.summary?.propClass || 'N/A',
-    description: propertyData.summary?.legal1 || 'No description available',
     yearBuilt: propertyData.summary?.yearBuilt || 'N/A',
-    lotSize: propertyData.lot?.lotSize1 ? `${propertyData.lot.lotSize1} acres` : 'N/A',
+    lotSize: propertyData.lot?.lotSize1? `${propertyData.lot.lotSize1} acres` : 'N/A',
     bedrooms: propertyData.building?.rooms?.beds || 'N/A',
     bathrooms: propertyData.building?.rooms?.bathsTotal || 'N/A'
-  } : null;
-
-
-  const [searchParams, setSearchParams] = useState({
-    searchType: "address",
-    searchValue: "",
   });
-  const [initialSearch, setInitialSearch] = useState(true);
-
-  const attomKey = import.meta.env.VITE_ATTOM_API_KEY;
-  const attomUrl = import.meta.env.VITE_ATTOM_API_URL;
-
-  async function fetchProperty() {
-    if (!searchParams.searchValue.trim()) {
-      setError("Please enter a search value");
-      return;
-    }
-
-    setLoading(true);
-    setInitialSearch(false);
-
-    try {
-      const addressParts = searchParams.searchValue.split('/').map(part => part.trim());
-      const address1 = encodeURIComponent(addressParts[0]);
-      const address2 = addressParts.length > 1 ? encodeURIComponent(addressParts[1]) : '';
-
-      const apiUrl = `${attomUrl}?address1=${address1}${address2 ? `&address2=${address2}` : ''}`;
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'apikey': attomKey
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.property && data.property.length > 0) {
-        updateProperty(data.property[0]);
-      } else {
-        clearProperty();
-        setError("No property found");
-      }
-    } catch (error) {
-      console.error("Error fetching property:", error);
-      clearProperty();
-      setError("Failed to fetch property");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setError("");
-    fetchProperty();
+    setHasSearched(true);
+    fetchProperty(searchValue);
   };
-
-  const handleClearSearch = () => {
-    setSearchParams({
-      searchType: "address",
-      searchValue: "",
-    });
+  const handleClear = () => {
     clearProperty();
-    setError("");
-    setInitialSearch(true);
+    setHasSearched(false);
+    setSearchValue('');
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--from-bg)] to-[var(--secondary-gray-bg)] font-inter">
       {loading ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+          <div className="relative">
             <div className="loader mb-4"></div>
-            <span className="text-white text-lg font-semibold">Loading property...</span>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Home className="text-white w-6 h-6 animate-pulse" />
+            </div>
           </div>
+          <span className="text-white text-lg font-semibold">Loading property...</span>
           <style>{`
-            .loader {
-              border: 4px solid var(--tertiary-gray-bg);
-              border-top: 4px solid var(--mafia-red);
-              border-radius: 50%;
-              width: 48px;
-              height: 48px;
-              animation: spin 1s linear infinite;
-            }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
+            .loader { border:4px solid rgba(255,255,255,0.1); border-top:4px solid var(--mafia-red); border-radius:50%; width:48px; height:48px; animation:spin 1s linear infinite; }
+            @keyframes spin { 0%{transform:rotate(0deg);}100%{transform:rotate(360deg);} }
           `}</style>
         </div>
       ) : (
-        <div className="w-[95%] max-w-6xl mx-auto py-6 sm:py-10">
-          <motion.div
-            variants={heroAnimation}
-            initial="initial"
-            animate="animate"
-            className="mb-8"
-          >
-            <motion.h1
-              variants={textReveal}
-              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
-            >
-              Find Your Property
+        <div className="w-[95%] max-w-6xl mx-auto py-6 sm:py-12">
+          <motion.div variants={heroAnimation} initial="initial" animate="animate" className="mb-10 text-center">
+            <motion.h1 variants={textReveal} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white to-[var(--mafia-red)]">
+              Discover Property Insights
             </motion.h1>
-            <motion.p
-              variants={textReveal}
-              className="text-[var(--secondary-gray-text)] text-base sm:text-lg"
-            >
-              Search by address to discover property details
+            <motion.p variants={textReveal} className="text-[var(--secondary-gray-text)] text-lg sm:text-xl max-w-2xl mx-auto">
+              Unlock comprehensive details for any property with a simple search
             </motion.p>
           </motion.div>
 
-          <motion.div
-            variants={slideInUp}
-            initial="initial"
-            animate="animate"
-            className="bg-[var(--secondary-gray-bg)] rounded-2xl shadow-sm border border-[var(--tertiary-gray-bg)] p-4 sm:p-6 lg:p-8 mb-8"
+          <motion.div 
+            variants={slideInUp} 
+            initial="initial" 
+            animate="animate" 
+            className="bg-[var(--secondary-gray-bg)] rounded-xl shadow-lg border border-[var(--tertiary-gray-bg)] p-6 mb-10 backdrop-blur-sm bg-opacity-70"
           >
-            <form onSubmit={handleSearch} className="space-y-4 sm:space-y-6">
-              <div className="flex items-center justify-center">
-                <div className="bg-[var(--tertiary-gray-bg)] rounded-xl p-1 flex">
-                  <button
-                    type="button"
-                    onClick={() => setSearchParams({ ...searchParams, searchType: "address" })}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${searchParams.searchType === "address"
-                      ? "bg-[var(--secondary-gray-bg)] text-[var(--mafia-red)] shadow-sm"
-                      : "text-[var(--primary-gray-text)] hover:text-white"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span>Address</span>
-                    </div>
-                  </button>
-                </div>
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-grow">
+                <MapPin size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--placeholder-gray)]"/>
+                <input
+                  type="text"
+                  placeholder="Enter address (e.g., 123 Main St, Austin, TX)"
+                  value={searchValue}
+                  onChange={e => setSearchValue(e.target.value)}
+                  className="w-full pl-10 py-3 pr-4 border border-[var(--tertiary-gray-bg)] bg-[var(--primary-gray-bg)] text-white placeholder-[var(--placeholder-gray)] rounded-lg focus:ring-2 focus:ring-[var(--mafia-red)] focus:border-transparent transition-all duration-200"
+                />
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="relative">
-                  <MapPin size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--placeholder-gray)]" />
-                  <input
-                    type="text"
-                    placeholder="Enter address (e.g. 123 Main St / Austin, TX)"
-                    value={searchParams.searchValue}
-                    onChange={(e) => {
-                      setSearchParams({ ...searchParams, searchValue: e.target.value });
-                      setError("");
-                    }}
-                    className="w-full pl-10 pr-4 py-3 border border-[var(--tertiary-gray-bg)] bg-[var(--secondary-gray-bg)] text-white placeholder-[var(--placeholder-gray)] rounded-xl focus:ring-2 focus:ring-[var(--mafia-red)] focus:border-transparent transition-all"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-[var(--mafia-red)] hover:bg-[var(--mafia-red-hover)] text-white font-semibold py-3 px-6 rounded-xl transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+              <div className="flex gap-3">
+                <button 
+                  type="submit" 
+                  className="flex items-center gap-2 bg-[var(--mafia-red)] hover:bg-[var(--mafia-red-dark)] text-white py-3 px-6 rounded-lg transition-colors duration-200"
+                >
+                  <Search size={18} />
+                  <span>Search</span>
+                </button>
+                {hasSearched && (
+                  <button 
+                    type="button" 
+                    onClick={handleClear} 
+                    className="flex items-center gap-2 border border-[var(--tertiary-gray-bg)] hover:bg-[var(--tertiary-gray-bg)] text-[var(--primary-gray-text)] py-3 px-6 rounded-lg transition-colors duration-200"
                   >
-                    <span>Search</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="px-4 py-3 border border-[var(--tertiary-gray-bg)] text-[var(--primary-gray-text)] bg-[var(--secondary-gray-bg)] rounded-xl hover:bg-[var(--mafia-red)] hover:text-white transition-colors flex items-center gap-2"
-                  >
+                    <X size={18} />
                     <span>Clear</span>
                   </button>
-                </div>
+                )}
               </div>
-
-              {error && (
-                <div className="text-[var(--mafia-red)] text-sm font-medium mt-2 text-center">
-                  {error}
-                </div>
-              )}
             </form>
+            {error && (
+              <motion.p 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[var(--mafia-red)] mt-3 flex items-center gap-2"
+              >
+                <X size={16} />
+                <span>{error}</span>
+              </motion.p>
+            )}
           </motion.div>
 
-          {/* Property Display Area */}
           <div className="relative">
             <AnimatePresence mode="wait">
               {initialSearch ? (
-                <motion.div
-                  key="initial-state"
-                  className="flex flex-col items-center justify-center py-20"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                <motion.div 
+                  key="initial" 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0 }} 
+                  className="flex flex-col items-center py-20"
                 >
-                  <Home size={48} className="text-[var(--mafia-red)] mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Search for a Property</h3>
+                  <div className="relative mb-6">
+                    <Home size={64} className="text-[var(--mafia-red)] animate-pulse"/>
+                    <div className="absolute -inset-4 bg-[var(--mafia-red)] rounded-full opacity-10 blur-md"></div>
+                  </div>
+                  <h3 className="text-2xl font-semibold text-white mb-3">Start Your Property Search</h3>
                   <p className="text-[var(--secondary-gray-text)] text-center max-w-md">
-                    Enter an address above to view property details
+                    Enter an address above to view comprehensive property details, valuation estimates, and key features.
                   </p>
                 </motion.div>
               ) : propertyData ? (
-                <motion.div
-                  key="property-details"
-                  variants={fadeInUp}
-                  initial="initial"
-                  animate="animate"
-                  exit={{ opacity: 0 }}
-                  className="bg-[var(--secondary-gray-bg)] rounded-2xl border border-[var(--tertiary-gray-bg)] overflow-hidden"
+                <motion.div 
+                  key="details" 
+                  variants={fadeInUp} 
+                  initial="initial" 
+                  animate="animate" 
+                  exit={{ opacity: 0 }} 
+                  className="grid lg:grid-cols-3 bg-[var(--secondary-gray-bg)] rounded-xl overflow-hidden shadow-lg border border-[var(--tertiary-gray-bg)]"
                 >
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-                    {/* Left Details Panel */}
-                    <div className="p-6 lg:p-8 bg-[var(--tertiary-gray-bg)]">
-                      <div className="space-y-6">
-                        <div>
-                          <h3 className="text-lg font-bold text-white mb-1">Property Details</h3>
-                          <div className="h-1 w-12 bg-[var(--mafia-red)] mb-4"></div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-xs text-[var(--secondary-gray-text)]">Address</p>
-                            <p className="text-sm text-white">
-                              {propertyData?.address ? formatAddress(propertyObject.address) : 'Address not available'}
-                            </p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs text-[var(--secondary-gray-text)]">Property Type</p>
-                            <p className="text-sm text-white">{propertyObject.propertyType}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs text-[var(--secondary-gray-text)]">Zoning</p>
-                            <p className="text-sm text-white">{propertyObject.zoningType}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs text-[var(--secondary-gray-text)]">Year Built</p>
-                            <p className="text-sm text-white">{propertyObject.yearBuilt}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs text-[var(--secondary-gray-text)]">APN</p>
-                            <p className="text-sm text-white">{propertyObject.apn}</p>
-                          </div>
-                        </div>
+                  {/* Left Panel - Details */}
+                  <div className="p-8 bg-gradient-to-b from-[var(--tertiary-gray-bg)] to-[var(--primary-gray-bg)]">
+                    <h3 className="text-xl font-bold text-white mb-6 pb-3 border-b border-[var(--tertiary-gray-bg)]">
+                      Property Details
+                    </h3>
+                    <div className="space-y-5">
+                      <div>
+                        <p className="text-sm text-[var(--secondary-gray-text)]">Address</p>
+                        <p className="text-white font-medium">{formatAddress(propertyObject.address)}</p>
                       </div>
-                    </div>
-
-                    {/* Center Image */}
-                    <div className="order-first lg:order-none">
-                      <div className="relative h-full">
-                        <img
-                          src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80"
-                          alt={propertyObject.title}
-                          className="w-full h-64 lg:h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
-                          }}
-                        />
-                        <div className="absolute bottom-4 left-4 bg-[var(--mafia-red)] text-white text-xs font-medium px-3 py-1 rounded-lg">
-                          {propertyObject.price}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Details Panel */}
-                    <div className="p-6 lg:p-8">
-                      <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <h3 className="text-lg font-bold text-white mb-1">Key Features</h3>
-                          <div className="h-1 w-12 bg-[var(--mafia-red)] mb-4"></div>
+                          <p className="text-sm text-[var(--secondary-gray-text)]">Type</p>
+                          <p className="text-white font-medium">{propertyObject.propertyType}</p>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-[var(--tertiary-gray-bg)] p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Bed className="w-4 h-4 text-[var(--mafia-red)]" />
-                              <span className="text-sm font-medium text-white">Bedrooms</span>
-                            </div>
-                            <p className="text-md font-bold text-white">{propertyObject.bedrooms}</p>
-                          </div>
-
-                          <div className="bg-[var(--tertiary-gray-bg)] p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Bath className="w-4 h-4 text-[var(--mafia-red)]" />
-                              <span className="text-sm font-medium text-white">Bathrooms</span>
-                            </div>
-                            <p className="text-md font-bold text-white">{propertyObject.bathrooms}</p>
-                          </div>
-
-                          <div className="bg-[var(--tertiary-gray-bg)] p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Ruler className="w-4 h-4 text-[var(--mafia-red)]" />
-                              <span className="text-sm font-medium text-white">Living Area</span>
-                            </div>
-                            <p className="text-md font-bold text-white">{propertyObject.size}</p>
-                          </div>
-
-                          <div className="bg-[var(--tertiary-gray-bg)] p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Layers className="w-4 h-4 text-[var(--mafia-red)]" />
-                              <span className="text-sm font-medium text-white">Lot Size</span>
-                            </div>
-                            <p className="text-md font-bold text-white">{propertyObject.lotSize}</p>
-                          </div>
+                        <div>
+                          <p className="text-sm text-[var(--secondary-gray-text)]">Zoning</p>
+                          <p className="text-white font-medium">{propertyObject.zoningType}</p>
                         </div>
-
-                        <div className="pt-4">
-                          <button
-                            className="w-full bg-[var(--mafia-red)] hover:bg-[var(--mafia-red-hover)] text-white font-medium py-3 px-6 rounded-lg transition-colors"
-                            onClick={() => {
-                              const parts = searchParams.searchValue.split('/').map(p => p.trim());
-                              const addr1 = encodeURIComponent(parts[0]);
-                              const addr2 = parts.length > 1 ? encodeURIComponent(parts[1]) : '';
-                              navigate(`/valuation/${addr1}/${addr2}`);
-                            }}
-                          >
-                            Run Valuation
-                          </button>
+                        <div>
+                          <p className="text-sm text-[var(--secondary-gray-text)]">Year Built</p>
+                          <p className="text-white font-medium">{propertyObject.yearBuilt}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-[var(--secondary-gray-text)]">APN</p>
+                          <p className="text-white font-medium">{propertyObject.apn}</p>
                         </div>
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Middle Panel - Image */}
+                  <div className="relative h-64 lg:h-auto group overflow-hidden">
+                    <img 
+                      src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80" 
+                      alt={propertyObject.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={e => e.target.src='https://via.placeholder.com/800x600?text=Property+Image+Not+Available'}
+                    />
+                    <div className="absolute bottom-4 left-4 bg-[var(--mafia-red)] text-white text-sm px-4 py-2 rounded-lg shadow-md">
+                      {propertyObject.price}
+                    </div>
+                  </div>
+                  
+                  {/* Right Panel - Features */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-white mb-6 pb-3 border-b border-[var(--tertiary-gray-bg)]">
+                      Key Features
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      {[
+                        { icon: Bed, label: 'Bedrooms', value: propertyObject.bedrooms },
+                        { icon: Bath, label: 'Bathrooms', value: propertyObject.bathrooms },
+                        { icon: Ruler, label: 'Area', value: propertyObject.size },
+                        { icon: Layers, label: 'Lot', value: propertyObject.lotSize }
+                      ].map((item, i) => (
+                        <motion.div 
+                          key={i} 
+                          whileHover={{ y: -3 }}
+                          className="bg-[var(--tertiary-gray-bg)] p-4 rounded-lg border border-[var(--tertiary-gray-bg)] hover:border-[var(--mafia-red)] transition-all duration-200"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-[var(--primary-gray-bg)] rounded-lg">
+                              <item.icon className="w-5 h-5 text-[var(--mafia-red)]"/>
+                            </div>
+                            <span className="text-sm text-[var(--secondary-gray-text)]">{item.label}</span>
+                          </div>
+                          <p className="font-bold text-white text-lg">{item.value}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={() => navigate(`/valuation/${encodeURIComponent(searchValue)}`)} 
+                      className="w-full mt-6 bg-gradient-to-r from-[var(--mafia-red)] to-[var(--mafia-red-dark)] hover:from-[var(--mafia-red-dark)] hover:to-[var(--mafia-red)] text-white py-3 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg"
+                    >
+                      Run Valuation Analysis
+                    </button>
+                  </div>
                 </motion.div>
               ) : (
-                <motion.div
-                  key="no-results"
-                  className="flex flex-col items-center justify-center py-20"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                <motion.div 
+                  key="none" 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0 }} 
+                  className="flex flex-col items-center py-20"
                 >
-                  <Home size={48} className="text-[var(--mafia-red)] mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">No Property Found</h3>
-                  <p className="text-[var(--secondary-gray-text)] text-center max-w-md">
-                    Try searching with a different address
+                  <div className="relative mb-6">
+                    <Home size={64} className="text-[var(--mafia-red)]"/>
+                    <div className="absolute -inset-4 bg-[var(--mafia-red)] rounded-full opacity-10 blur-md"></div>
+                  </div>
+                  <h3 className="text-2xl font-semibold text-white mb-3">No Property Found</h3>
+                  <p className="text-[var(--secondary-gray-text)] text-center max-w-md mb-6">
+                    We couldn't find any property matching your search. Please try a different address.
                   </p>
+                  <button 
+                    onClick={handleClear}
+                    className="flex items-center gap-2 px-6 py-2 bg-[var(--tertiary-gray-bg)] hover:bg-[var(--primary-gray-bg)] text-white rounded-lg transition-colors duration-200"
+                  >
+                    <X size={16} />
+                    <span>Clear Search</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

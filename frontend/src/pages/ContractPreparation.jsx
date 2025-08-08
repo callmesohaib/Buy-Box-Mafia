@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, PenTool } from "lucide-react"
@@ -12,29 +12,37 @@ import { useAuth } from "../store/AuthContext"
 import { useProperty } from "../store/PropertyContext"
 
 export default function ContractPreparation() {
-  const { address1, address2 } = useParams();
-  const { propertyData, clearProperty, updateProperty } = useProperty()
+  const { fullAddress } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { propertyData, clearProperty, updateProperty } = useProperty();
+
   const query = new URLSearchParams(location.search);
   const initialStep = parseInt(query.get('step')) || 0;
   const [currentStep, setCurrentStepState] = useState(initialStep);
   const [isLoading, setIsLoading] = useState(false);
-  const [buyersError, setBuyersError] = useState(null);
+  const [error, setError] = useState(null);
+
   const defaultDropdowns = {
     financingType: "Cash",
     surveyRequired: "Yes",
     titleInsurance: "Yes",
     inspectionPeriod: "7 days",
   };
+
   const attomKey = import.meta.env.VITE_ATTOM_API_KEY;
   const attomUrl = import.meta.env.VITE_ATTOM_API_URL;
 
-  async function fetchProperty() {
+  const fetchProperty = useCallback(async () => {
+    if (!fullAddress) return;
+
     setIsLoading(true);
+    setError(null);
+
     try {
-      const apiUrl = `${attomUrl}?address1=${encodeURIComponent(address1)}${address2 ? `&address2=${encodeURIComponent(address2)}` : ''}`;
+      const query = decodeURIComponent(fullAddress);
+      const apiUrl = `${attomUrl}?address1=${encodeURIComponent(query)}`;
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -53,22 +61,24 @@ export default function ContractPreparation() {
         updateProperty(data.property[0]);
       } else {
         clearProperty();
-        setBuyersError("No property found");
+        setError("No property found");
       }
     } catch (error) {
       console.error("Error fetching property:", error);
-      setBuyersError("Failed to fetch property");
+      setError("Failed to fetch property");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [fullAddress, attomUrl, attomKey, updateProperty, clearProperty]);
 
   useEffect(() => {
     if (!propertyData) {
       fetchProperty();
     }
-  }, []);
-  console.log("ContractPreparation:", { propertyData });
+  }, [propertyData, fetchProperty]);
+
+  const dealId = propertyData?.identifier?.attomId || '';
+
   const initialContractData = (location.state && location.state.contractData)
     ? { ...defaultDropdowns, ...location.state.contractData }
     : { ...defaultDropdowns };
@@ -90,15 +100,7 @@ export default function ContractPreparation() {
 
   const [errors, setErrors] = useState({});
 
-  const handleFormChange = (newFormData) => {
-    setFormData(prev => ({
-      ...prev,
-      ...newFormData
-    }));
-  };
-  var dealId = propertyData.identifier.attomId
   useEffect(() => {
-
     if (propertyData) {
       const updatedData = {
         apn: propertyData?.identifier.apn || '',
@@ -131,9 +133,9 @@ export default function ContractPreparation() {
   }, [propertyData, user]);
 
   useEffect(() => {
-    const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${dealId}`);
-    const storedSigningUrl = sessionStorage.getItem(`signingUrl_${dealId}`);
-    const storedContractData = sessionStorage.getItem(`contractData_${dealId}`);
+    const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${fullAddress}`);
+    const storedSigningUrl = sessionStorage.getItem(`signingUrl_${fullAddress}`);
+    const storedContractData = sessionStorage.getItem(`contractData_${fullAddress}`);
 
     if (storedEnvelopeId && storedSigningUrl) {
       setContractData(prev => ({
@@ -157,19 +159,20 @@ export default function ContractPreparation() {
         console.error("Error parsing stored contract data:", error);
       }
     }
-  }, [dealId]);
+  }, [fullAddress]);
 
   useEffect(() => {
     if (contractData) {
-      sessionStorage.setItem(`contractData_${dealId}`, JSON.stringify(contractData));
+      sessionStorage.setItem(`contractData_${fullAddress}`, JSON.stringify(contractData));
     }
-  }, [contractData, dealId]);
+  }, [contractData, fullAddress]);
 
   const setCurrentStep = (step, data = contractData) => {
     setCurrentStepState(step);
     const params = new URLSearchParams(location.search);
     params.set('step', step);
     navigate({
+      pathname: `/contract/${encodeURIComponent(fullAddress)}`,
       search: params.toString()
     }, {
       replace: true,
@@ -188,8 +191,8 @@ export default function ContractPreparation() {
   useEffect(() => {
     if (currentStep === 2 && !contractData.signingUrl && !isLoading) {
       const regenerateSigningUrl = async () => {
-        const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${dealId}`);
-        const storedSigningUrl = sessionStorage.getItem(`signingUrl_${dealId}`);
+        const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${fullAddress}`);
+        const storedSigningUrl = sessionStorage.getItem(`signingUrl_${fullAddress}`);
 
         if (storedSigningUrl) {
           setContractData(prev => ({ ...prev, signingUrl: storedSigningUrl }));
@@ -201,15 +204,15 @@ export default function ContractPreparation() {
 
         setIsLoading(true);
         try {
-          const res = await fetch(`http://localhost:3001/api/docusign/get-signing-url/${envelopeIdToUse}?dealId=${dealId}`, {
+          const res = await fetch(`http://localhost:3001/api/docusign/get-signing-url/${envelopeIdToUse}?fullAddress=${encodeURIComponent(fullAddress)}`, {
             method: "GET",
             headers: { "Content-Type": "application/json" }
           });
 
           if (res.ok) {
             const data = await res.json();
-            sessionStorage.setItem(`envelopeId_${dealId}`, data.envelopeId);
-            sessionStorage.setItem(`signingUrl_${dealId}`, data.url);
+            sessionStorage.setItem(`envelopeId_${fullAddress}`, data.envelopeId);
+            sessionStorage.setItem(`signingUrl_${fullAddress}`, data.url);
             setContractData(prev => ({
               ...prev,
               envelopeId: data.envelopeId,
@@ -227,7 +230,7 @@ export default function ContractPreparation() {
 
       regenerateSigningUrl();
     }
-  }, [currentStep, contractData.signingUrl, contractData.envelopeId, isLoading, dealId]);
+  }, [currentStep, contractData.signingUrl, contractData.envelopeId, isLoading, fullAddress]);
 
   const nextStep = async () => {
     if (currentStep === 0) {
@@ -256,6 +259,7 @@ export default function ContractPreparation() {
             }],
             documentBase64: pdfBase64,
             documentName: "Purchase-And-Sales-Agreement.pdf",
+            fullAddress: encodeURIComponent(fullAddress),
             dealId
           })
         });
@@ -266,8 +270,8 @@ export default function ContractPreparation() {
         }
 
         const data = await res.json();
-        sessionStorage.setItem(`envelopeId_${dealId}`, data.envelopeId);
-        sessionStorage.setItem(`signingUrl_${dealId}`, data.url);
+        sessionStorage.setItem(`envelopeId_${fullAddress}`, data.envelopeId);
+        sessionStorage.setItem(`signingUrl_${fullAddress}`, data.url);
 
         setCurrentStep(currentStep + 1, {
           ...contractData,
@@ -275,7 +279,7 @@ export default function ContractPreparation() {
           envelopeId: data.envelopeId,
           signingUrl: data.url,
           matchedBuyers: contractData.matchedBuyers || [],
-          buyersCount: contractData.buyersCount || 0,
+          buyersCount: contractData.matchedBuyers.length || 0,
           buyerIds: contractData.buyerIds || []
         });
       } catch (e) {
@@ -306,13 +310,13 @@ export default function ContractPreparation() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      navigate(`/submit/${dealId}`, {
+      navigate(`/submit/${encodeURIComponent(fullAddress)}`, {
         state: {
           contractData: {
             ...contractData,
             ...formData,
             matchedBuyers: contractData.matchedBuyers || [],
-            buyersCount: contractData.buyersCount || 0,
+            buyersCount: contractData.matchedBuyers.length || 0,
             buyerIds: contractData.buyerIds || []
           },
           dealId
@@ -339,7 +343,7 @@ export default function ContractPreparation() {
           <ContractPreview
             contractData={contractData}
             formData={contractData}
-            dealId={dealId}
+            fullAddress={fullAddress}
             isLoading={isLoading}
           />
         );
@@ -369,6 +373,7 @@ export default function ContractPreparation() {
           <SignatureStep
             envelopeId={contractData.envelopeId}
             signingUrl={contractData.signingUrl}
+            fullAddress={fullAddress}
           />
         );
       case 3:
@@ -376,6 +381,7 @@ export default function ContractPreparation() {
           <DownloadSignedPDF
             envelopeId={contractData.envelopeId}
             contractData={contractData}
+            fullAddress={fullAddress}
           />
         );
       default:
@@ -383,11 +389,11 @@ export default function ContractPreparation() {
     }
   };
 
-  if (buyersError) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
         <div className="text-center">
-          <p className="text-[var(--secondary-gray-text)] mb-4">{buyersError}</p>
+          <p className="text-[var(--secondary-gray-text)] mb-4">{error}</p>
           <button
             onClick={() => navigate('/property-search')}
             className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-xl hover:bg-[var(--mafia-red-hover)] transition-colors"
@@ -422,6 +428,7 @@ export default function ContractPreparation() {
             </button>
             <h1 className="text-2xl font-bold text-white tracking-tight">Contract Preparation</h1>
           </div>
+          <p className="text-[var(--secondary-gray-text)]">Property: {decodeURIComponent(fullAddress)}</p>
           <p className="text-[var(--secondary-gray-text)]">Deal ID: #{dealId}</p>
         </motion.div>
 
@@ -483,50 +490,42 @@ export default function ContractPreparation() {
   );
 }
 
-function DownloadSignedPDF({ envelopeId, contractData }) {
-  const hasDownloaded = useRef(false);
+function DownloadSignedPDF({ envelopeId, contractData, fullAddress }) {
   const [isSendingToSeller, setIsSendingToSeller] = useState(false);
   const [sendToSellerStatus, setSendToSellerStatus] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  useEffect(() => {
-    if (!envelopeId || hasDownloaded.current) return;
-    hasDownloaded.current = true;
-
-    const downloadPdf = async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/api/docusign/download-signed/${envelopeId}`);
-        if (!response.ok) throw new Error('Failed to fetch signed PDF');
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Signed-Contract.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-      } catch (e) {
-        console.error("Download error:", e);
-      }
-    };
-
-    downloadPdf();
-  }, [envelopeId]);
+  const handleDownload = async () => {
+    if (!envelopeId) return;
+    
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`http://localhost:3001/api/docusign/download-signed/${envelopeId}`);
+      if (!response.ok) throw new Error('Failed to download');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Signed-Contract.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert('Failed to download contract');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleSendToSeller = async () => {
     const sellerEmail = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
     const sellerName = contractData?.sellerName || contractData?.seller?.name || contractData?.formData?.sellerName;
 
-    if (!sellerEmail?.trim()) {
-      alert('Seller email is required');
-      return;
-    }
-
-    if (!sellerName?.trim()) {
-      alert('Seller name is required');
-      return;
-    }
+    if (!sellerEmail?.trim()) return alert('Seller email is required');
+    if (!sellerName?.trim()) return alert('Seller name is required');
 
     setIsSendingToSeller(true);
     setSendToSellerStatus(null);
@@ -539,7 +538,8 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
           envelopeId,
           sellerEmail: sellerEmail.trim(),
           sellerName: sellerName.trim(),
-          contractData
+          contractData,
+          fullAddress: encodeURIComponent(fullAddress)
         }),
       });
 
@@ -548,114 +548,107 @@ function DownloadSignedPDF({ envelopeId, contractData }) {
 
       setSendToSellerStatus('success');
       if (data.sellerEnvelopeId) {
-        sessionStorage.setItem(`sellerEnvelopeId_${contractData?.dealId || 'default'}`, data.sellerEnvelopeId);
+        sessionStorage.setItem(`sellerEnvelopeId_${fullAddress}`, data.sellerEnvelopeId);
       }
     } catch (error) {
       console.error("Send to seller error:", error);
       setSendToSellerStatus('error');
-      alert(error.message || 'Failed to send contract to seller');
     } finally {
       setIsSendingToSeller(false);
     }
   };
 
-  const hasSellerInfo = contractData?.sellerEmail || contractData?.seller?.email ||
-    contractData?.formData?.sellerEmail;
+  const hasSellerInfo = contractData?.sellerEmail || contractData?.seller?.email || contractData?.formData?.sellerEmail;
 
   return (
-    <div className="text-center mt-12">
-      <h2 className="text-xl font-bold text-white mb-4">Contract Signed!</h2>
-      <p className="text-[var(--primary-gray-text)] mb-6">Your contract has been signed.</p>
+    <div className="max-w-md mx-auto p-6 space-y-6">
+      <div className="text-center space-y-2">
+        <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-white">Contract Signed</h2>
+        <p className="text-[var(--mafia-red)]">Your document is ready</p>
+      </div>
 
-      <button
-        className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 transition-colors mb-4"
-        onClick={() => {
-          fetch(`http://localhost:3001/api/docusign/download-signed/${envelopeId}`)
-            .then(res => res.blob())
-            .then(blob => {
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'Signed-Contract.pdf';
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-            });
-        }}
-        disabled={!envelopeId}
-      >
-        Download Signed Contract
-      </button>
-
-      <div className="mt-4">
+      <div className="space-y-4">
         <button
-          onClick={handleSendToSeller}
-          disabled={!envelopeId || !hasSellerInfo || isSendingToSeller}
-          className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={handleDownload}
+          disabled={!envelopeId || isDownloading}
+          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
         >
-          {isSendingToSeller ? (
+          {isDownloading ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
-              Sending to Seller...
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Downloading...
             </>
           ) : (
-            '📧 Send to Seller for Signature'
+            'Download Signed Contract'
           )}
         </button>
 
+        {hasSellerInfo && (
+          <button
+            onClick={handleSendToSeller}
+            disabled={!envelopeId || isSendingToSeller}
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+          >
+            {isSendingToSeller ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending...
+              </>
+            ) : (
+              'Send to Seller for Signature'
+            )}
+          </button>
+        )}
+
         {!hasSellerInfo && (
-          <p className="text-[var(--secondary-gray-text)] text-sm mt-2">
-            Seller information not found. Please go back and fill in the seller details.
-          </p>
+          <div className="p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
+            Seller information not found to send contract
+          </div>
+        )}
+
+        {sendToSellerStatus === 'success' && (
+          <div className="p-3 bg-green-50 rounded-md text-sm text-green-700">
+            <p>Contract sent successfully</p>
+            <SellerSigningStatus
+              sellerEnvelopeId={sessionStorage.getItem(`sellerEnvelopeId_${fullAddress}`)}
+              fullAddress={fullAddress}
+            />
+          </div>
+        )}
+
+        {sendToSellerStatus === 'error' && (
+          <div className="p-3 bg-red-50 rounded-md text-sm text-red-700">
+            Failed to send contract. Please try again.
+          </div>
         )}
       </div>
-
-      {sendToSellerStatus === 'success' && (
-        <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg max-w-md mx-auto">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <p className="text-green-400 font-semibold">Contract Sent Successfully!</p>
-          </div>
-          <SellerSigningStatus
-            sellerEnvelopeId={sessionStorage.getItem(`sellerEnvelopeId_${contractData?.dealId || 'default'}`)}
-            dealId={contractData?.dealId}
-          />
-        </div>
-      )}
-
-      {sendToSellerStatus === 'error' && (
-        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg max-w-md mx-auto">
-          <p className="text-red-400 font-semibold">Failed to Send Contract</p>
-          <p className="text-red-400 text-sm mt-1">Please try again or contact support.</p>
-        </div>
-      )}
     </div>
   );
 }
 
-function SellerSigningStatus({ sellerEnvelopeId, dealId }) {
+function SellerSigningStatus({ sellerEnvelopeId, fullAddress }) {
   const [status, setStatus] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   const checkStatus = async () => {
     if (!sellerEnvelopeId) return;
-
     setIsChecking(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/docusign/seller-envelope-status/${sellerEnvelopeId}`);
+      const response = await fetch(`http://localhost:3001/api/docusign/seller-envelope-status/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
       const data = await response.json();
-
-      if (response.ok) {
-        setStatus(data);
-      } else {
-        console.error('Status check failed:', data.error);
-      }
+      if (response.ok) setStatus(data);
     } catch (error) {
       console.error('Error checking status:', error);
     } finally {
@@ -666,21 +659,18 @@ function SellerSigningStatus({ sellerEnvelopeId, dealId }) {
   const downloadFullySigned = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/docusign/download-seller-signed/${sellerEnvelopeId}`);
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Fully-Signed-Contract.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-      } else {
-        throw new Error('Failed to download');
-      }
+      const response = await fetch(`http://localhost:3001/api/docusign/download-seller-signed/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
+      if (!response.ok) throw new Error('Failed to download');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Fully-Signed-Contract.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error("Download error:", error);
       alert('Failed to download contract');
@@ -695,57 +685,42 @@ function SellerSigningStatus({ sellerEnvelopeId, dealId }) {
       const interval = setInterval(checkStatus, 30000);
       return () => clearInterval(interval);
     }
-  }, [sellerEnvelopeId]);
+  }, [sellerEnvelopeId, fullAddress]);
 
   if (!sellerEnvelopeId) return null;
 
   return (
-    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-blue-400 font-semibold text-sm">Seller Signing Status</h4>
-        <button
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-medium">Seller Status:</span>
+        <button 
           onClick={checkStatus}
           disabled={isChecking}
-          className="text-blue-400 hover:text-blue-300 text-xs disabled:opacity-50"
+          className="text-xs text-indigo-600 hover:text-indigo-500"
         >
-          {isChecking ? 'Checking...' : 'Refresh'}
+          {isChecking ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
-
+      
       {status ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${status.completed ? 'bg-green-500' : 'bg-yellow-500'
-              }`}></div>
-            <span className="text-blue-400 text-sm">
-              {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
-            </span>
+            <div className={`w-2 h-2 rounded-full ${status.completed ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            <span>{status.status.charAt(0).toUpperCase() + status.status.slice(1)}</span>
           </div>
 
-          {status.completed ? (
-            <div className="space-y-2">
-              <p className="text-green-400 text-sm">✅ Seller has signed!</p>
-              <button
-                onClick={downloadFullySigned}
-                disabled={isDownloading}
-                className="w-full bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
-              >
-                {isDownloading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
-                    Downloading...
-                  </>
-                ) : (
-                  '📄 Download Fully Signed Contract'
-                )}
-              </button>
-            </div>
-          ) : (
-            <p className="text-yellow-400 text-sm">⏳ Waiting for seller...</p>
+          {status.completed && (
+            <button
+              onClick={downloadFullySigned}
+              disabled={isDownloading}
+              className="w-full mt-2 text-sm flex items-center justify-center px-3 py-1 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isDownloading ? 'Downloading...' : 'Download Fully Signed'}
+            </button>
           )}
         </div>
       ) : (
-        <p className="text-blue-400 text-sm">Checking status...</p>
+        <div className="text-gray-500">Checking status...</div>
       )}
     </div>
   );
