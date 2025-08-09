@@ -151,40 +151,33 @@ export default function ContractPreparation() {
       }
     });
   };
-useEffect(() => {
-  if (currentStep !== 2 || isLoading) return;
+  useEffect(() => {
+    if (currentStep === 2 && contractData.envelopeId && !contractData.signingUrl) {
+      const fetchSigningUrl = async () => {
+        setIsLoading(true);
+        try {
+          const res = await fetch(
+            `http://localhost:3001/api/docusign/get-signing-url/${contractData.envelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`
+          );
 
-  const fetchSigningUrl = async () => {
-    const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${fullAddress}`);
-    const envelopeIdToUse = contractData.envelopeId || storedEnvelopeId;
-    if (!envelopeIdToUse) {
-      console.warn("No envelopeId available to generate signing URL");
-      setCurrentStep(1); 
-      return;
+          if (!res.ok) throw new Error("Failed to get signing URL");
+
+          const data = await res.json();
+          setContractData(prev => ({
+            ...prev,
+            signingUrl: data.url
+          }));
+          sessionStorage.setItem(`signingUrl_${fullAddress}`, data.url);
+        } catch (err) {
+          console.error("Error fetching signing url:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchSigningUrl();
     }
-
-    setIsLoading(true);
-    try {
-      const res = await fetch(`http://localhost:3001/api/docusign/get-signing-url/${envelopeIdToUse}?fullAddress=${encodeURIComponent(fullAddress)}`);
-      if (!res.ok) {
-        console.error("Failed to get signing url:", await res.text());
-        setCurrentStep(1);
-        return;
-      }
-
-      const data = await res.json();
-      setContractData(prev => ({ ...prev, envelopeId: data.envelopeId, signingUrl: data.url }));
-      window.open(data.url, "_blank");
-    } catch (err) {
-      console.error("Error fetching signing url:", err);
-      setCurrentStep(1);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  fetchSigningUrl();
-}, [currentStep, contractData.envelopeId, fullAddress]);
+  }, [currentStep, contractData.envelopeId, fullAddress]);
 
 
 
@@ -221,12 +214,19 @@ useEffect(() => {
         });
 
         if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || "Failed to initiate DocuSign");
+          let message = "Failed to initiate DocuSign";
+          try {
+            const errorData = await res.json();
+            message = errorData?.details || errorData?.error || message;
+          } catch (e) {
+            console.error("Error parsing DocuSign error response:", e);
+          }
+          throw new Error(message);
         }
 
         const data = await res.json();
         sessionStorage.setItem(`envelopeId_${fullAddress}`, data.envelopeId);
+
 
         setCurrentStep(currentStep + 1, {
           ...contractData,
@@ -236,6 +236,28 @@ useEffect(() => {
           buyersCount: contractData.matchedBuyers.length || 0,
           buyerIds: contractData.buyerIds || []
         });
+        setContractData(prev => ({
+          ...prev,
+          ...formData,
+          envelopeId: data.envelopeId
+        }));
+
+        // Immediately fetch signing URL
+        const urlRes = await fetch(
+          `http://localhost:3001/api/docusign/get-signing-url/${data.envelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`
+        );
+
+        if (!urlRes.ok) throw new Error("Failed to get signing URL");
+
+        const urlData = await urlRes.json();
+
+        setContractData(prev => ({
+          ...prev,
+          signingUrl: urlData.url
+        }));
+        sessionStorage.setItem(`signingUrl_${fullAddress}`, urlData.url);
+
+        setCurrentStep(currentStep + 1);
       } catch (e) {
         console.error("DocuSign error:", e);
         alert(e.message || "Failed to prepare document. Please try again.");

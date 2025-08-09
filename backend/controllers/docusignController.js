@@ -5,14 +5,28 @@ const nodemailer = require("nodemailer");
 const INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
 const USER_ID = process.env.DOCUSIGN_USER_ID;
 const IMPERSONATED_USER_GUID = USER_ID;
-const PRIVATE_KEY = process.env.DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, "\n");
+const PRIVATE_KEY_ENV = process.env.DOCUSIGN_PRIVATE_KEY;
+const PRIVATE_KEY = PRIVATE_KEY_ENV ? PRIVATE_KEY_ENV.replace(/\\n/g, "\n") : null;
 const BASE_PATH = "https://demo.docusign.net/restapi";
 const REDIRECT_URL = process.env.DOCUSIGN_REDIRECT_URL;
 const JWTLIFETIME = 3600;
+const OAUTH_BASE_PATH = "account-d.docusign.com";
 
 async function getJWTAuthToken() {
   const apiClient = new docusign.ApiClient();
   apiClient.setBasePath(BASE_PATH);
+  apiClient.setOAuthBasePath(OAUTH_BASE_PATH);
+
+  if (!INTEGRATION_KEY || !IMPERSONATED_USER_GUID || !PRIVATE_KEY) {
+    const missing = {
+      hasIntegrationKey: !!INTEGRATION_KEY,
+      hasUserId: !!IMPERSONATED_USER_GUID,
+      hasPrivateKey: !!PRIVATE_KEY,
+    };
+    const error = new Error("DocuSign configuration missing");
+    error.details = missing;
+    throw error;
+  }
 
   try {
     const results = await apiClient.requestJWTUserToken(
@@ -77,6 +91,7 @@ exports.createEnvelope = async (req, res) => {
       return res.status(500).json({
         error: "DocuSign authentication failed",
         details: authError.message,
+        ...(authError.details ? { missing: authError.details } : {}),
       });
     }
 
@@ -85,6 +100,7 @@ exports.createEnvelope = async (req, res) => {
     // Get accountId
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
      const clientUserId = req.body.clientUserId || "1"; // Default or from request
 
     // Build envelope definition
@@ -215,18 +231,57 @@ exports.getSigningUrl = async (req, res) => {
     const envelopeId = req.params.envelopeId;
     if (!envelopeId) return res.status(400).json({ error: "Missing envelopeId" });
 
-    const { accessToken, apiClient } = await getJWTAuthToken();
+    // Authenticate and get apiClient
+    let auth;
+    try {
+      auth = await getJWTAuthToken();
+    } catch (authErr) {
+      console.error("JWT auth error (getSigningUrl):", authErr);
+      if (authErr.code === "CONSENT_REQUIRED" || authErr.message === "consent_required") {
+        return res.status(401).json({ error: "Consent required", details: "Visit /api/docusign/consent-url to grant consent" });
+      }
+      if (authErr.code === "DOCUSIGN_NETWORK") {
+        return res.status(502).json({ error: "DocuSign network/DNS error", details: authErr.message });
+      }
+      return res.status(500).json({ error: "DocuSign authentication failed", details: authErr.message });
+    }
+
+    const { accessToken, apiClient } = auth;
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
 
+    // Get account info and set correct REST base path for this account
     const userInfo = await apiClient.getUserInfo(accessToken);
-    const accountId = userInfo.accounts[0].accountId;
+    if (!userInfo || !userInfo.accounts || userInfo.accounts.length === 0) {
+      return res.status(500).json({ error: "Unable to obtain DocuSign account information" });
+    }
+
+    const account = userInfo.accounts[0];
+    const accountId = account.accountId;
+    // account.baseUri is like "https://demo.docusign.net"
+    apiClient.setBasePath(`${account.baseUri}/restapi`);
+
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
 
     // list recipients and log them for debugging
-    const recipients = await envelopesApi.listRecipients(accountId, envelopeId);
-    console.log("Recipients for envelope:", JSON.stringify(recipients, null, 2));
+    let recipients;
+    try {
+      recipients = await envelopesApi.listRecipients(accountId, envelopeId);
+      console.log("Recipients for envelope:", JSON.stringify(recipients, null, 2));
+    } catch (listErr) {
+      console.error("Error listing recipients:", {
+        message: listErr?.message,
+        response: listErr?.response?.body || null,
+        code: listErr?.code || null,
+      });
+      // forward DocuSign error body if present
+      return res.status(listErr?.response?.status || 502).json({
+        error: "Failed to list recipients",
+        details: listErr.message,
+        docusignError: listErr?.response?.body || null,
+      });
+    }
 
-    const signer = recipients.signers && recipients.signers[0];
+    const signer = recipients?.signers && recipients.signers[0];
     if (!signer) {
       return res.status(400).json({ error: "No signer found for envelope", details: "Envelope has no signers" });
     }
@@ -246,34 +301,39 @@ exports.getSigningUrl = async (req, res) => {
     viewRequest.userName = signer.name;
     viewRequest.clientUserId = clientUserId;
 
-    // log the viewRequest right before calling DocuSign
-    console.log("Creating recipient view with:", JSON.stringify({
+    console.log("Creating recipient view with:", {
       returnUrl: viewRequest.returnUrl,
-      authenticationMethod: viewRequest.authenticationMethod,
       email: viewRequest.email,
       userName: viewRequest.userName,
       clientUserId: viewRequest.clientUserId
-    }, null, 2));
+    });
 
     try {
       const results = await envelopesApi.createRecipientView(accountId, envelopeId, {
-        recipientViewRequest: viewRequest,
+        recipientViewRequest: viewRequest
       });
 
-      console.log("DocuSign createRecipientView results:", results);
+      console.log("DocuSign createRecipientView success:", results);
       return res.json({ envelopeId, url: results.url, status: "ready" });
     } catch (dsErr) {
-      // dsErr may contain response.body with DocuSign error JSON
-      console.error("DocuSign createRecipientView error:", dsErr);
-      const docusignError = dsErr?.response?.body || dsErr?.response || null;
-      const status = dsErr?.response?.status || 400;
-      // return the detailed docusign error so frontend can show it
-      return res.status(status).json({
+      console.error("DocuSign createRecipientView error:", {
+        message: dsErr?.message,
+        response: dsErr?.response?.body || null,
+        code: dsErr?.code || null
+      });
+
+      // Map common network errors to 502
+      if (dsErr.code === "ENOTFOUND" || dsErr.code === "EAI_AGAIN" || dsErr.code === "ECONNREFUSED") {
+        return res.status(502).json({ error: "DocuSign network/DNS error", details: dsErr.message });
+      }
+
+      return res.status(dsErr?.response?.status || 500).json({
         error: "DocuSign createRecipientView failed",
         details: dsErr.message,
-        docusignError
+        docusignError: dsErr?.response?.body || null
       });
     }
+
   } catch (err) {
     console.error("Get signing URL error (outer):", err, err?.response?.body || "");
     return res.status(500).json({
@@ -283,7 +343,6 @@ exports.getSigningUrl = async (req, res) => {
     });
   }
 };
-
 
 
 exports.getEnvelopeStatus = async (req, res) => {
@@ -297,6 +356,7 @@ exports.getEnvelopeStatus = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
@@ -326,6 +386,7 @@ exports.downloadSignedDocument = async (req, res) => {
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
     const docId = docsList.envelopeDocuments?.[0]?.documentId || "1";
@@ -371,6 +432,7 @@ exports.sendToSeller = async (req, res) => {
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
@@ -536,6 +598,7 @@ exports.getSellerEnvelopeStatus = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
@@ -566,6 +629,7 @@ exports.downloadSellerSignedDocument = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
@@ -593,3 +657,4 @@ exports.downloadSellerSignedDocument = async (req, res) => {
     });
   }
 };
+
