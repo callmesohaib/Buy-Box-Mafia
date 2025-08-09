@@ -221,8 +221,14 @@ useEffect(() => {
         });
 
         if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || "Failed to initiate DocuSign");
+          let message = "Failed to initiate DocuSign";
+          try {
+            const errorData = await res.json();
+            message = errorData?.details || errorData?.error || message;
+          } catch (_) {
+            // ignore parse errors
+          }
+          throw new Error(message);
         }
 
         const data = await res.json();
