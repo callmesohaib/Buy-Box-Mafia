@@ -16,5 +16,7 @@ router.get('/download-signed/:envelopeId', docusignController.downloadSignedDocu
 router.post('/send-to-seller', docusignController.sendToSeller);
 router.get('/seller-envelope-status/:envelopeId', docusignController.getSellerEnvelopeStatus);
 router.get('/download-seller-signed/:envelopeId', docusignController.downloadSellerSignedDocument);
+// Health check
+router.get('/health', docusignController.health);
 
 module.exports = router;

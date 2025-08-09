@@ -1,11 +1,14 @@
 const docusign = require("docusign-esign");
 const fs = require("fs");
 const nodemailer = require("nodemailer");
+const dns = require("dns").promises;
+const axios = require("axios");
 
 const INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
 const USER_ID = process.env.DOCUSIGN_USER_ID;
 const IMPERSONATED_USER_GUID = USER_ID;
-const PRIVATE_KEY = process.env.DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, "\n");
+const PRIVATE_KEY_RAW = process.env.DOCUSIGN_PRIVATE_KEY || "";
+const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, "\n") : "";
 const BASE_PATH = "https://demo.docusign.net/restapi";
 const REDIRECT_URL = process.env.DOCUSIGN_REDIRECT_URL;
 const JWTLIFETIME = 3600;
@@ -39,6 +42,12 @@ async function getJWTAuthToken() {
 }
 
 exports.getConsentUrl = (req, res) => {
+  if (!INTEGRATION_KEY || !REDIRECT_URL) {
+    return res.status(500).json({
+      error: "DocuSign configuration missing",
+      details: "DOCUSIGN_INTEGRATION_KEY or DOCUSIGN_REDIRECT_URL is not set",
+    });
+  }
   const authUrl = `https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${INTEGRATION_KEY}&redirect_uri=${REDIRECT_URL}`;
   res.json({ url: authUrl });
 };
@@ -72,6 +81,19 @@ exports.createEnvelope = async (req, res) => {
           error: "Consent required",
           solution:
             "Please visit /api/docusign/consent-url first to grant consent",
+        });
+      }
+      // Network/DNS helpful messages
+      if (authError.code === "ENOTFOUND") {
+        return res.status(503).json({
+          error: "Cannot resolve DocuSign host",
+          details: "DNS lookup failed for account-d.docusign.com. Check internet/DNS/proxy settings on the server.",
+        });
+      }
+      if (authError.code === "ECONNREFUSED" || authError.code === "ETIMEDOUT") {
+        return res.status(503).json({
+          error: "Cannot reach DocuSign",
+          details: `Network error (${authError.code}). Ensure outbound HTTPS to DocuSign is allowed.`,
         });
       }
       return res.status(500).json({
@@ -190,6 +212,7 @@ exports.createEnvelope = async (req, res) => {
       message: err.message,
       stack: err.stack,
       response: err.response?.body,
+      code: err.code,
     });
 
     // Provide helpful error responses for common cases
@@ -197,6 +220,19 @@ exports.createEnvelope = async (req, res) => {
       return res.status(401).json({
         error: "Consent required",
         details: "Please visit /api/docusign/consent-url to grant consent for the integration key.",
+      });
+    }
+
+    if (err.code === "ENOTFOUND") {
+      return res.status(503).json({
+        error: "Cannot resolve DocuSign host",
+        details: "DNS lookup failed for account-d.docusign.com. Check internet/DNS/proxy settings on the server.",
+      });
+    }
+    if (err.code === "ECONNREFUSED" || err.code === "ETIMEDOUT") {
+      return res.status(503).json({
+        error: "Cannot reach DocuSign",
+        details: `Network error (${err.code}). Ensure outbound HTTPS to DocuSign is allowed.`,
       });
     }
 
@@ -592,4 +628,45 @@ exports.downloadSellerSignedDocument = async (req, res) => {
       details: err.message,
     });
   }
+};
+
+// Health check to diagnose DocuSign setup and connectivity
+exports.health = async (req, res) => {
+  const result = {
+    env: {
+      DOCUSIGN_INTEGRATION_KEY: !!INTEGRATION_KEY,
+      DOCUSIGN_USER_ID: !!USER_ID,
+      DOCUSIGN_PRIVATE_KEY: !!PRIVATE_KEY,
+      DOCUSIGN_REDIRECT_URL: !!REDIRECT_URL,
+    },
+    dns: {},
+    http: {},
+  };
+
+  try {
+    const lookup = await dns.lookup("account-d.docusign.com");
+    result.dns["account-d.docusign.com"] = lookup;
+  } catch (e) {
+    result.dns["account-d.docusign.com"] = { error: e.code || e.message };
+  }
+
+  try {
+    const demoLookup = await dns.lookup("demo.docusign.net");
+    result.dns["demo.docusign.net"] = demoLookup;
+  } catch (e) {
+    result.dns["demo.docusign.net"] = { error: e.code || e.message };
+  }
+
+  try {
+    const resp = await axios.get("https://account-d.docusign.com/oauth/token");
+    result.http["oauth_token_get"] = { status: resp.status };
+  } catch (e) {
+    if (e.response) {
+      result.http["oauth_token_get"] = { status: e.response.status };
+    } else {
+      result.http["oauth_token_get"] = { error: e.code || e.message };
+    }
+  }
+
+  res.json(result);
 };
