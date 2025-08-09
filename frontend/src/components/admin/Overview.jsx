@@ -89,7 +89,7 @@ export default function Overview() {
       </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
         <motion.div
           variants={staggerItem}
           className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700"
@@ -103,10 +103,7 @@ export default function Overview() {
               <FileText size={24} className="text-amber-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <TrendingUp size={16} className="text-amber-400" />
-            <span className="text-sm text-amber-400">{analyticsData.monthlyGrowth}</span>
-          </div>
+
         </motion.div>
 
         <motion.div
@@ -122,10 +119,7 @@ export default function Overview() {
               <Users size={24} className="text-green-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <TrendingUp size={16} className="text-green-400" />
-            <span className="text-sm text-green-400">+5 this month</span>
-          </div>
+          
         </motion.div>
 
         <motion.div
@@ -141,30 +135,9 @@ export default function Overview() {
               <DollarSign size={24} className="text-amber-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <TrendingUp size={16} className="text-amber-400" />
-            <span className="text-sm text-amber-400">+8%</span>
-          </div>
+         
         </motion.div>
 
-        <motion.div
-          variants={staggerItem}
-          className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-400">Conversion Rate</p>
-              <p className="text-2xl font-bold text-white">{analyticsData.conversionRate}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center">
-              <TrendingUp size={24} className="text-green-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2">
-            <TrendingUp size={16} className="text-green-400" />
-            <span className="text-sm text-green-400">+3%</span>
-          </div>
-        </motion.div>
       </div>
 
       {/* Recent Activity */}

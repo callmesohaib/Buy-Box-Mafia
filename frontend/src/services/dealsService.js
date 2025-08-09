@@ -62,21 +62,7 @@ export const getDealById = async (id) => {
   return res.json();
 };
 
-// Get deals by MLS number
-export const getDealsByMlsNumber = async (mlsNumber) => {
-  const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/mls/${mlsNumber}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
-  }
-  return res.json();
-};
+
 
 // Get deals by status
 export const getDealsByStatus = async (status) => {

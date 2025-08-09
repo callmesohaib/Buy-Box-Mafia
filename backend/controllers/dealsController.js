@@ -31,7 +31,7 @@ const toFirestoreDeal = (body) => {
     propertySize: safe(body.propertySize, ""),
     apn: safe(body.apn, ""),
     listDate: safe(body.listDate, ""),
-    status: safe(body.status, "Pending"), 
+    status: safe(body.status, "Pending"),
 
     // Offer Details
     offerPrice: safe(body.propertyPrice, ""),
@@ -181,13 +181,29 @@ exports.getDealsByMlsNumber = async (req, res) => {
 };
 
 // Update a deal
+// In your backend controller (e.g., dealsController.js)
+const nodemailer = require("nodemailer");
+
 exports.updateDeal = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
     updateData.updatedAt = new Date();
 
-    await db.collection("deals").doc(id).update(updateData);
+    const dealRef = db.collection("deals").doc(id);
+    const dealSnapshot = await dealRef.get();
+    const oldDeal = dealSnapshot.data();
+
+    await dealRef.update(updateData);
+
+    if (updateData.status === "Approved" && oldDeal.scoutEmail) {
+      await sendApprovalEmail(
+        oldDeal.scoutEmail,
+        oldDeal.scoutName,
+        oldDeal.apn
+      );
+    }
+
     res
       .status(200)
       .json({ success: true, message: "Deal updated successfully" });
@@ -196,6 +212,65 @@ exports.updateDeal = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+async function sendApprovalEmail(email, scoutName, dealId) {
+  // Create reusable transporter object using SMTP transport
+  const transporter = nodemailer.createTransport({
+    service: "Gmail", // or your email service
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+  });
+
+  // Setup email data
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "🎉 Your Deal Has Been Approved! - Buy Box Mafia",
+    html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #d72638, #ff1744); color: white; padding: 25px; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px;">Buy Box Mafia</h1>
+        <p style="margin: 10px 0 0 0; font-size: 18px;">Deal Approved!</p>
+      </div>
+      
+      <div style="padding: 30px; background: #f9f9f9;">
+        <h2 style="color: #333; margin-top: 0;">Congratulations ${scoutName}!</h2>
+        
+        <p style="color: #666; line-height: 1.6; font-size: 16px;">
+          We're excited to inform you that your deal <strong>(ID: ${dealId})</strong> has been officially approved by our team!
+        </p>
+        
+        <div style="background: #fff; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+          <p style="margin: 0; color: #333; font-weight: bold;">✔️ Deal Status: Approved</p>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+            You can now view and manage this deal in your dashboard.
+          </p>
+        </div>
+        
+        <p style="color: #666; line-height: 1.6; font-size: 14px;">
+          <strong>Next Steps:</strong><br>
+          - Our team will be in touch shortly regarding the next phases<br>
+          - You'll receive updates as the deal progresses<br>
+          - Contact us anytime with questions
+        </p>
+      </div>
+      
+      <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
+        <p style="margin: 0 0 10px 0;">Need help? Contact our support team</p>
+        <p style="margin: 0;">
+          © ${new Date().getFullYear()} Buy Box Mafia. All rights reserved.<br>
+          <span style="color: #aaa;">123 Business Ave, Your City, ST 12345</span>
+        </p>
+      </div>
+    </div>
+  `,
+  };
+
+  // Send mail
+  await transporter.sendMail(mailOptions);
+}
 
 // Delete a deal
 exports.deleteDeal = async (req, res) => {
@@ -229,12 +304,10 @@ exports.importDeals = async (req, res) => {
     });
 
     await batch.commit();
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: `${deals.length} deals imported successfully`,
-      });
+    res.status(201).json({
+      success: true,
+      message: `${deals.length} deals imported successfully`,
+    });
   } catch (error) {
     console.error("Error importing deals:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -333,56 +406,48 @@ exports.getPotentialBuyersCount = async (req, res) => {
   }
 };
 
-// Get overview analytics data
 exports.getOverviewAnalytics = async (req, res) => {
   try {
-    // Get all deals
+    // Fetch deals
     const dealsSnapshot = await db.collection("deals").get();
     const deals = dealsSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    // Get all buyers
+    // Fetch buyers
     const buyersSnapshot = await db.collection("buyers").get();
     const buyers = buyersSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    // Calculate analytics
     const totalDeals = deals.length;
-    const totalBuyers = buyers.length; // Changed from activeBuyers to totalBuyers
+    const totalBuyers = buyers.length;
 
-    // Calculate total value from deals
+    // Calculate total value
     const totalValue = deals.reduce((sum, deal) => {
       let price = 0;
-
-      // Handle different formats of offerPrice
       if (deal.offerPrice) {
         if (typeof deal.offerPrice === "string") {
-          // Remove $ and commas from string
           price = parseFloat(deal.offerPrice.replace(/[$,]/g, "")) || 0;
         } else if (typeof deal.offerPrice === "number") {
-          // Direct number
           price = deal.offerPrice;
         } else {
-          // Try to convert to number
           price = parseFloat(deal.offerPrice) || 0;
         }
       }
-
       return sum + price;
     }, 0);
 
-    // Calculate conversion rate (deals with status "Closed" or "Approved")
+    // Conversion Rate
     const closedDeals = deals.filter(
       (deal) => deal.status === "Closed" || deal.status === "Approved"
     ).length;
     const conversionRate =
       totalDeals > 0 ? Math.round((closedDeals / totalDeals) * 100) : 0;
 
-    // Get recent deals (last 3)
+    // Recent Deals (last 3)
     const recentDeals = deals
       .sort((a, b) => {
         const dateA = a.createdAt?.toDate
@@ -403,49 +468,65 @@ exports.getOverviewAnalytics = async (req, res) => {
         createdAt: deal.createdAt,
       }));
 
-    // Calculate monthly growth (simplified - you can enhance this)
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const dealsThisMonth = deals.filter((deal) => {
-      const dealDate = deal.createdAt?.toDate
-        ? deal.createdAt.toDate()
-        : new Date(deal.createdAt);
-      return (
-        dealDate.getMonth() === currentMonth &&
-        dealDate.getFullYear() === currentYear
-      );
-    }).length;
+    // Monthly breakdown (last 12 months)
+    const monthlyStats = Array.from({ length: 12 }).map((_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (11 - index));
+      const month = date.toLocaleString("default", { month: "short" });
+      const year = date.getFullYear();
 
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    const dealsLastMonth = deals.filter((deal) => {
-      const dealDate = deal.createdAt?.toDate
-        ? deal.createdAt.toDate()
-        : new Date(deal.createdAt);
-      return (
-        dealDate.getMonth() === lastMonth && dealDate.getFullYear() === lastYear
-      );
-    }).length;
+      const monthlyDeals = deals.filter((deal) => {
+        const dealDate = deal.createdAt?.toDate
+          ? deal.createdAt.toDate()
+          : new Date(deal.createdAt);
+        return (
+          dealDate.getMonth() === date.getMonth() &&
+          dealDate.getFullYear() === year
+        );
+      });
 
+      const monthlyValue = monthlyDeals.reduce((sum, deal) => {
+        let price = 0;
+        if (deal.offerPrice) {
+          if (typeof deal.offerPrice === "string") {
+            price = parseFloat(deal.offerPrice.replace(/[$,]/g, "")) || 0;
+          } else if (typeof deal.offerPrice === "number") {
+            price = deal.offerPrice;
+          } else {
+            price = parseFloat(deal.offerPrice) || 0;
+          }
+        }
+        return sum + price;
+      }, 0);
+
+      return {
+        month,
+        deals: monthlyDeals.length,
+        value: monthlyValue,
+      };
+    });
+
+    // Current & Last Month growth
+    const currentMonthDeals = monthlyStats[11].deals;
+    const lastMonthDeals = monthlyStats[10].deals;
     const monthlyGrowth =
-      dealsLastMonth > 0
+      lastMonthDeals > 0
         ? `+${Math.round(
-            ((dealsThisMonth - dealsLastMonth) / dealsLastMonth) * 100
+            ((currentMonthDeals - lastMonthDeals) / lastMonthDeals) * 100
           )}%`
-        : dealsThisMonth > 0
-        ? `+${dealsThisMonth} new`
+        : currentMonthDeals > 0
+        ? `+${currentMonthDeals} new`
         : "0%";
 
-    const analyticsData = {
+    res.status(200).json({
       totalDeals,
-      totalBuyers, // Changed from activeBuyers to totalBuyers
+      totalBuyers,
       totalValue: `$${totalValue.toLocaleString()}`,
       conversionRate: `${conversionRate}%`,
       monthlyGrowth,
       recentDeals,
-    };
-
-    res.status(200).json(analyticsData);
+      monthlyStats, // NEW: for charts
+    });
   } catch (error) {
     console.error("Error fetching overview analytics:", error);
     res.status(500).json({ success: false, message: error.message });
