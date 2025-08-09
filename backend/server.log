@@ -1,0 +1,10 @@
+nohup: ignoring input
+[dotenv@17.2.0] injecting env (0) from .env (tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`)
+Firebase service account not found or failed to load. Running without Firebase admin. Cannot find module '../buybox-mafia-firebase-adminsdk-fbsvc-38d0d0b172.json'
+Require stack:
+- /workspace/backend/utils/firebase.js
+- /workspace/backend/controllers/authController.js
+- /workspace/backend/routers/authRoutes.js
+- /workspace/backend/index.js
+Server running on port 3001
+Firebase project: undefined
