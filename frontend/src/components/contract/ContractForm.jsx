@@ -278,14 +278,14 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             <label className={labelClass}>Offer Price *</label>
             <input
               type="number"
-              name="offerPrice"
-              value={formData.propertyPrice || ""}
+              name="propertyPrice"
+              value={formData.propertyPrice}
               onChange={handleInputChange}
-              className={inputBase + (errors.offerPrice ? ' border-[var(--mafia-red)] bg-[var(--mafia-red)]/10' : '')}
+              className={inputBase + (errors.propertyPrice ? ' border-[var(--mafia-red)] bg-[var(--mafia-red)]/10' : '')}
               placeholder="Enter offer price"
             />
             <AnimatePresence>
-              {errors.offerPrice && (
+              {errors.propertyPrice && (
                 <motion.div
                   className="flex items-center gap-1 mt-1 text-[var(--mafia-red)] text-sm"
                   variants={errorMessageVariants}
@@ -294,7 +294,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
                   exit="exit"
                 >
                   <AlertCircle size={14} />
-                  {errors.offerPrice}
+                  {errors.propertyPrice}
                 </motion.div>
               )}
             </AnimatePresence>

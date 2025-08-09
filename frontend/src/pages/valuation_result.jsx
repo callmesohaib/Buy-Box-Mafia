@@ -44,44 +44,44 @@ export default function ValuationResult() {
 
   const calculateBuyerMatch = useCallback((property, buyer) => {
     if (!property || !buyer) return 0;
-    
+
     let score = 0, total = 0;
-    const zoning = Array.isArray(buyer.zoningTypes) ? 
-      buyer.zoningTypes : 
+    const zoning = Array.isArray(buyer.zoningTypes) ?
+      buyer.zoningTypes :
       buyer.zoningTypes ? [buyer.zoningTypes] : [];
-    
-    const locations = Array.isArray(buyer.buyingLocations) ? 
-      buyer.buyingLocations : 
+
+    const locations = Array.isArray(buyer.buyingLocations) ?
+      buyer.buyingLocations :
       buyer.buyingLocations ? [buyer.buyingLocations] : [];
 
     // City match
-    total++; 
+    total++;
     if (property.address?.locality?.toLowerCase() === buyer.city?.toLowerCase()) score++;
-    
+
     // Country match
-    total++; 
+    total++;
     if (property.address?.country?.toLowerCase() === buyer.country?.toLowerCase()) score++;
-    
+
     // Class match
-    total++; 
+    total++;
     if (zoning.some(z => z?.toLowerCase() === property.summary?.propClass?.toLowerCase())) score++;
-    
+
     // Locations match
-    total++; 
+    total++;
     if (locations.some(l => l?.toLowerCase() === property.address?.locality?.toLowerCase())) score++;
-    
+
     // Budget match
     total++;
     const price = Number(property.sale?.amount?.saleAmt);
     const min = Number(buyer.budgetMin);
     const max = Number(buyer.budgetMax);
-    
+
     if (!isNaN(price)) {
       if (!isNaN(min) && !isNaN(max) && price >= min && price <= max) score++;
       else if (!isNaN(min) && isNaN(max) && price >= min) score++;
       else if (isNaN(min) && !isNaN(max) && price <= max) score++;
     }
-    
+
     return Math.round((score / total) * 100);
   }, []);
 
@@ -93,21 +93,21 @@ export default function ValuationResult() {
     }
   }, [fullAddress, fetchProperty, initialLoad]);
 
-  
+
   useEffect(() => {
     if (!propertyData) return;
 
     const fetchBuyers = async () => {
       setBuyersLoading(true);
       setBuyersError(null);
-      
+
       try {
         const response = await fetch("http://localhost:3001/api/buyers");
         if (!response.ok) throw new Error("Failed to fetch buyers");
-        
+
         const data = await response.json();
         setBuyers(data);
-        
+
         const matches = data
           .map(buyer => ({
             ...buyer,
@@ -115,7 +115,7 @@ export default function ValuationResult() {
           }))
           .filter(b => b.matchPercent > 0)
           .sort((a, b) => b.matchPercent - a.matchPercent);
-        
+
         setMatchedBuyers(matches);
       } catch (err) {
         console.error("Buyer fetch error:", err);
@@ -137,15 +137,15 @@ export default function ValuationResult() {
 
   // Format helpers
   const formatValue = val => val ?? 'N/A';
-  const formatBudget = (min, max) => 
+  const formatBudget = (min, max) =>
     min && max ? `$${min} - $${max}` :
-    min ? `From $${min}` :
-    max ? `Up to $${max}` : 'N/A';
-  
-  const formatAddress = addr => 
+      min ? `From $${min}` :
+        max ? `Up to $${max}` : 'N/A';
+
+  const formatAddress = addr =>
     addr?.oneLine || [addr?.line1, addr?.line2].filter(Boolean).join(', ');
-  
-  const formatSize = size => 
+
+  const formatSize = size =>
     `${size?.bldgSize || size?.livingSize || size?.universalSize || 'N/A'} sqft`;
 
   // Loading and error states
@@ -167,7 +167,7 @@ export default function ValuationResult() {
           <p className="text-[var(--mafia-red)] mb-4">
             {error || 'Property not found'}
           </p>
-          <button 
+          <button
             onClick={() => navigate('/property-search')}
             className="bg-[var(--mafia-red)] text-white px-6 py-2 rounded-lg hover:bg-[var(--mafia-red-dark)] transition-colors"
           >
@@ -250,12 +250,12 @@ export default function ValuationResult() {
                 </div>
                 <p className="text-green-200 text-sm mb-3">
                   There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
-                  We can sell it to them for <span className="font-bold">{propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}</span>.
+                  We can sell it to them for <span className="font-bold">{propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt}` : 'N/A'}</span>.
                 </p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <TrendingUp size={14} className="text-green-300" />
-                    <span className="text-green-200">List Price: {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}</span>
+                    <span className="text-green-200">List Price: {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt}` : 'N/A'}</span>
                   </div>
                 </div>
               </motion.div>
@@ -340,14 +340,14 @@ export default function ValuationResult() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-900/30 rounded-xl border border-green-700">
-                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.sale.amount.saleAmt.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.sale.amount.saleAmt || 'N/A'}</div>
                 <div className="text-sm text-green-200 font-medium mb-2">List Price</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-green-300">
 
                 </div>
               </div>
               <div className="text-center p-4 bg-yellow-900/30 rounded-xl border border-yellow-700">
-                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.building?.rooms?.beds}</div>
+                <div className="text-2xl font-bold text-yellow-300 mb-1">{propertyData.building?.rooms?.beds || 'N/A'}</div>
                 <div className="text-sm text-yellow-200 font-medium mb-2">Bedrooms</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-yellow-300">
 
@@ -420,7 +420,6 @@ export default function ValuationResult() {
                 </thead>
                 <tbody className="bg-[var(--secondary-gray-bg)] divide-y divide-[var(--quaternary-gray-bg)]">
                   {(activeTab === 'top' ? matchedBuyers.slice(0, 1) : matchedBuyers).map((buyer, index) => {
-                    // Gold for first, silver for second, bronze for third
                     let rankCircle;
                     if (index === 0) {
                       rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 text-black font-bold mr-2">1</span>;
@@ -544,11 +543,11 @@ export default function ValuationResult() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Heating Fuel</span>
-                <span className="text-purple-500 font-semibold">{propertyData.utilities?.heatingFuel}</span>
+                <span className="text-purple-500 font-semibold">{propertyData.utilities?.heatingFuel || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Heating</span>
-                <span className="text-white font-semibold">{propertyData.utilities?.heatingType}</span>
+                <span className="text-white font-semibold">{propertyData.utilities?.heatingType || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Cooling</span>

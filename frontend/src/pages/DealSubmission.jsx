@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../store/AuthContext";
-import { ChevronLeft, Upload, FileText, MapPin, User, Building, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
+import { ChevronLeft, Upload, FileText, MapPin, User, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
 import { addDeal } from "../services/dealsService";
 import { useProperty } from "../store/PropertyContext";
 import { fadeInDown, staggerContainer, staggerItem, buttonHover, modalBackdrop, modalContent } from "../animations/animation";
@@ -18,7 +18,7 @@ export default function DealSubmission() {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [localPropertyData, setLocalPropertyData] = useState(null); 
+  const [localPropertyData, setLocalPropertyData] = useState(null);
 
   const dealId = location.state?.dealId;
   const initialFormData = location.state?.contractData
@@ -27,6 +27,7 @@ export default function DealSubmission() {
       status: "pending",
       scoutNotes: location.state.contractData.scoutNotes || "",
       contractFile: null,
+      urlAddress: decodeURIComponent(fullAddress),
       matchedBuyers: location.state.contractData.matchedBuyers || [],
       buyersCount: location.state.contractData.matchedBuyers?.length || 0,
       buyerIds: location.state.contractData.buyerIds || []
@@ -40,11 +41,11 @@ export default function DealSubmission() {
       buyerIds: []
     };
 
-  const [formData, setFormData] = useState(initialFormData);
 
+  const [formData, setFormData] = useState(initialFormData);
+  console.log("Submission FormData:", formData)
   useEffect(() => {
     let isMounted = true;
-
     const fetchData = async () => {
       if (fullAddress) {
         try {
@@ -65,7 +66,6 @@ export default function DealSubmission() {
       isMounted = false;
       clearProperty();
     };
-    // Empty dependency array ensures this runs only once on mount
   }, []);
 
   useEffect(() => {
@@ -84,7 +84,9 @@ export default function DealSubmission() {
         submittedBy: user?.id || user?.uid,
         matchedBuyers: location.state.contractData.matchedBuyers || prev.matchedBuyers || [],
         buyersCount: location.state.contractData.matchedBuyers?.length || 0,
-        buyerIds: location.state.contractData.buyerIds || prev.buyerIds || []
+        buyerIds: location.state.contractData.buyerIds || prev.buyerIds || [],
+        urlAddress: decodeURIComponent(fullAddress),
+
       }));
     }
   }, [location.state?.contractData, user]);
@@ -143,7 +145,6 @@ export default function DealSubmission() {
   };
 
   const contractData = location.state?.contractData || formData || {};
-console.log("PropertyData:", propertyData)
   const parcelData = {
     id: dealId || contractData.dealId || 'N/A',
     address: contractData.propertyAddress || contractData.address || 'N/A',

@@ -45,6 +45,7 @@ exports.getConsentUrl = (req, res) => {
 
 exports.createEnvelope = async (req, res) => {
   try {
+    // Basic env validation
     if (!INTEGRATION_KEY || !USER_ID || !PRIVATE_KEY) {
       console.error("Missing DocuSign environment variables:", {
         hasIntegrationKey: !!INTEGRATION_KEY,
@@ -58,8 +59,8 @@ exports.createEnvelope = async (req, res) => {
       });
     }
 
+    // Authenticate with JWT
     let accessToken, apiClient;
-
     try {
       const auth = await getJWTAuthToken();
       accessToken = auth.accessToken;
@@ -81,13 +82,18 @@ exports.createEnvelope = async (req, res) => {
 
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
 
+    // Get accountId
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+     const clientUserId = req.body.clientUserId || "1"; // Default or from request
 
+    // Build envelope definition
     const envDef = new docusign.EnvelopeDefinition();
     envDef.emailSubject = req.body.subject || "Please sign this document";
-    envDef.status = "sent";
+    // Set to "sent" to immediately send; use "created" to leave as draft.
+    envDef.status = req.body.status || "sent";
 
+    // Prepare document (supports documentBase64, documentHtml, documentPath or default)
     let document;
     if (req.body.documentBase64) {
       document = {
@@ -99,7 +105,7 @@ exports.createEnvelope = async (req, res) => {
     } else if (req.body.documentHtml) {
       document = {
         documentBase64: Buffer.from(req.body.documentHtml).toString("base64"),
-        name: "document.html",
+        name: req.body.documentName || "document.html",
         fileExtension: "html",
         documentId: "1",
       };
@@ -123,17 +129,26 @@ exports.createEnvelope = async (req, res) => {
     }
     envDef.documents = [document];
 
-    if (!req.body.recipients || !req.body.recipients.length) {
-      throw new Error("At least one recipient is required");
+    // Validate recipients
+    if (!req.body.recipients || !Array.isArray(req.body.recipients) || !req.body.recipients.length) {
+      return res.status(400).json({ error: "At least one recipient is required" });
     }
 
-    envDef.recipients = {
-      signers: req.body.recipients.map((recipient, index) => ({
+    // Map recipients -> Signers (ensure clientUserId set for embedded signing)
+    // NOTE: clientUserId must match when creating recipient view later.
+    const signers = req.body.recipients.map((recipient, index) => {
+      if (!recipient.email || !recipient.name) {
+        throw new Error(`Recipient at index ${index} is missing email or name`);
+      }
+
+      const clientUserId = recipient.clientUserId || String(index + 1);
+
+      return {
         email: recipient.email,
         name: recipient.name,
         recipientId: (index + 1).toString(),
-        routingOrder: "1",
-        clientUserId: recipient.clientUserId || (index + 1).toString(),
+        routingOrder: recipient.routingOrder || "1",
+        clientUserId, // required for embedded signing (recipient view)
         tabs: {
           signHereTabs: [
             {
@@ -144,47 +159,48 @@ exports.createEnvelope = async (req, res) => {
             },
           ],
         },
-      })),
-    };
+      };
+    });
 
+    envDef.recipients = { signers };
+
+    // Create envelope
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
-    const envelope = await envelopesApi.createEnvelope(accountId, {
+
+    // NOTE: some SDK versions accept (accountId, envDef) while others accept (accountId, { envelopeDefinition: envDef }).
+    // Use the pattern your project used previously. Here we use the object wrapper as in your existing code.
+    const envelopeSummary = await envelopesApi.createEnvelope(accountId, {
       envelopeDefinition: envDef,
     });
-    const envelopeId = envelope.envelopeId;
 
-    const firstRecipient = req.body.recipients[0];
-    const viewRequest = new docusign.RecipientViewRequest();
-    const address = req.body.fullAddress;
-    console.log("Full Address:", address);
-    // const dealId = req.body.dealId || "C12312181";
-    const dynamicRedirectUrl = `http://localhost:5173/contract/${address}?step=3`;
-    viewRequest.returnUrl = dynamicRedirectUrl;
+    const envelopeId = envelopeSummary.envelopeId;
 
-    viewRequest.authenticationMethod = "none";
-    viewRequest.email = firstRecipient.email;
-    viewRequest.userName = firstRecipient.name;
-    viewRequest.clientUserId = firstRecipient.clientUserId || "1";
+    // Persist envelopeId if desired (frontend handles storage). Return envelopeId only.
+    console.log(`Envelope created: ${envelopeId}`);
 
-    const results = await envelopesApi.createRecipientView(
-      accountId,
+    return res.json({
       envelopeId,
-      { recipientViewRequest: viewRequest }
-    );
-
-    res.json({
-      envelopeId,
-      url: results.url,
-      status: "sent",
+      status: envelopeSummary?.status || envDef.status || "sent",
+      message:
+        "Envelope created. To start embedded signing, request a fresh signing URL from /api/docusign/get-signing-url/:envelopeId",
     });
   } catch (err) {
-    console.error("DocuSign error:", err);
+    console.error("DocuSign createEnvelope error:", err);
     console.error("Error details:", {
       message: err.message,
       stack: err.stack,
       response: err.response?.body,
     });
-    res.status(500).json({
+
+    // Provide helpful error responses for common cases
+    if (err.response && err.response.body && err.response.body.error === "consent_required") {
+      return res.status(401).json({
+        error: "Consent required",
+        details: "Please visit /api/docusign/consent-url to grant consent for the integration key.",
+      });
+    }
+
+    return res.status(500).json({
       error: "DocuSign operation failed",
       details: err.message,
       ...(err.response?.body ? { docusignError: err.response.body } : {}),
@@ -192,7 +208,85 @@ exports.createEnvelope = async (req, res) => {
   }
 };
 
+
+// improved getSigningUrl
 exports.getSigningUrl = async (req, res) => {
+  try {
+    const envelopeId = req.params.envelopeId;
+    if (!envelopeId) return res.status(400).json({ error: "Missing envelopeId" });
+
+    const { accessToken, apiClient } = await getJWTAuthToken();
+    apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
+
+    const userInfo = await apiClient.getUserInfo(accessToken);
+    const accountId = userInfo.accounts[0].accountId;
+    const envelopesApi = new docusign.EnvelopesApi(apiClient);
+
+    // list recipients and log them for debugging
+    const recipients = await envelopesApi.listRecipients(accountId, envelopeId);
+    console.log("Recipients for envelope:", JSON.stringify(recipients, null, 2));
+
+    const signer = recipients.signers && recipients.signers[0];
+    if (!signer) {
+      return res.status(400).json({ error: "No signer found for envelope", details: "Envelope has no signers" });
+    }
+
+    const clientUserId = signer.clientUserId;
+    if (!clientUserId) {
+      return res.status(400).json({ error: "Signer is not configured for embedded signing (missing clientUserId)" });
+    }
+
+    const fullAddress = req.query.fullAddress || '';
+    const viewRequest = new docusign.RecipientViewRequest();
+    viewRequest.returnUrl = fullAddress
+      ? `http://localhost:5173/contract/${encodeURIComponent(fullAddress)}?step=3`
+      : `http://localhost:5173/contract?step=3`;
+    viewRequest.authenticationMethod = "none";
+    viewRequest.email = signer.email;
+    viewRequest.userName = signer.name;
+    viewRequest.clientUserId = clientUserId;
+
+    // log the viewRequest right before calling DocuSign
+    console.log("Creating recipient view with:", JSON.stringify({
+      returnUrl: viewRequest.returnUrl,
+      authenticationMethod: viewRequest.authenticationMethod,
+      email: viewRequest.email,
+      userName: viewRequest.userName,
+      clientUserId: viewRequest.clientUserId
+    }, null, 2));
+
+    try {
+      const results = await envelopesApi.createRecipientView(accountId, envelopeId, {
+        recipientViewRequest: viewRequest,
+      });
+
+      console.log("DocuSign createRecipientView results:", results);
+      return res.json({ envelopeId, url: results.url, status: "ready" });
+    } catch (dsErr) {
+      // dsErr may contain response.body with DocuSign error JSON
+      console.error("DocuSign createRecipientView error:", dsErr);
+      const docusignError = dsErr?.response?.body || dsErr?.response || null;
+      const status = dsErr?.response?.status || 400;
+      // return the detailed docusign error so frontend can show it
+      return res.status(status).json({
+        error: "DocuSign createRecipientView failed",
+        details: dsErr.message,
+        docusignError
+      });
+    }
+  } catch (err) {
+    console.error("Get signing URL error (outer):", err, err?.response?.body || "");
+    return res.status(500).json({
+      error: "Failed to get signing URL",
+      details: err.message,
+      docusignError: err?.response?.body || null
+    });
+  }
+};
+
+
+
+exports.getEnvelopeStatus = async (req, res) => {
   try {
     const envelopeId = req.params.envelopeId;
     if (!envelopeId)
@@ -203,38 +297,26 @@ exports.getSigningUrl = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
-console.log("dealid", req.query.dealId)
-    const viewRequest = new docusign.RecipientViewRequest();
-
-    viewRequest.returnUrl = `http://localhost:5173/contract/${
-      req.query.dealId
-    }?step=3`;
-    viewRequest.authenticationMethod = "none";
-    viewRequest.email = "sohaib@gmail.com";
-    viewRequest.userName = "Sohaib Ikram";
-    viewRequest.clientUserId = "123";
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
-    const results = await envelopesApi.createRecipientView(
-      accountId,
-      envelopeId,
-      { recipientViewRequest: viewRequest }
-    );
+    const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
 
     res.json({
-      envelopeId,
-      url: results.url,
-      status: "ready",
+      status: envelope.status,
+      completed: envelope.status === "completed",
+      voided: envelope.status === "voided",
+      sentDateTime: envelope.sentDateTime,
+      deliveredDateTime: envelope.deliveredDateTime,
+      completedDateTime: envelope.completedDateTime,
     });
   } catch (err) {
-    console.error("Get signing URL error:", err);
+    console.error("Get envelope status error:", err);
     res.status(500).json({
-      error: "Failed to get signing URL",
+      error: "Failed to get envelope status",
       details: err.message,
     });
   }
 };
-
 exports.downloadSignedDocument = async (req, res) => {
   try {
     const envelopeId = req.params.envelopeId;

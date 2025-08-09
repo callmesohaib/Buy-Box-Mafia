@@ -18,6 +18,7 @@ const toFirestoreDeal = (body) => {
     sellerAddress: safe(body.sellerAddress, ""),
 
     // Property Information
+    urlAddress: safe(body.urlAddress, ""),
     propertyAddress: safe(body.propertyAddress, ""),
     propertyCity: safe(body.propertyCity, ""),
     propertyState: safe(body.propertyState, ""),
