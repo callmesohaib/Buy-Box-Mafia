@@ -1,5 +1,8 @@
 const { db, admin } = require("../utils/firebase");
+const nodemailer = require("nodemailer");
+const axios = require("axios");
 
+const DISCORD_WEBHOOK_URL ="https://discord.com/api/webhooks/1403705792003051633/CtZhBmw__sJRTJ1_4Q74ChXuQbK-cZ0MNfDwUP9E6jAixXiJTEwsonezkilYryDMlnT5";
 // Transform request body to Firestore deal format
 const toFirestoreDeal = (body) => {
   // Helper to safely get value or fallback to null
@@ -180,11 +183,44 @@ exports.getDealsByMlsNumber = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+async function sendDiscordNotification(scoutName, dealId) {
+  try {
+    await axios.post(DISCORD_WEBHOOK_URL, {
+      embeds: [
+        {
+          title: "🎉 Deal Approved!",
+          description: `A deal has just been **approved** by our team!`,
+          color: 0x4CAF50, // Green color
+          fields: [
+            {
+              name: "Scout Name",
+              value: scoutName,
+              inline: true
+            },
+            {
+              name: "Deal ID",
+              value: dealId,
+              inline: true
+            },
+            {
+              name: "Status",
+              value: "✅ Approved",
+              inline: true
+            }
+          ],
+          footer: {
+            text: `Buy Box Mafia • ${new Date().toLocaleDateString()}`,
+          },
+          timestamp: new Date()
+        }
+      ]
+    });
 
-// Update a deal
-// In your backend controller (e.g., dealsController.js)
-const nodemailer = require("nodemailer");
-
+    console.log("✅ Discord notification sent!");
+  } catch (err) {
+    console.error("❌ Failed to send Discord notification:", err.message);
+  }
+}
 exports.updateDeal = async (req, res) => {
   try {
     const { id } = req.params;
@@ -198,16 +234,21 @@ exports.updateDeal = async (req, res) => {
     await dealRef.update(updateData);
 
     if (updateData.status === "Approved" && oldDeal.scoutEmail) {
+      // Send email
       await sendApprovalEmail(
         oldDeal.scoutEmail,
         oldDeal.scoutName,
         oldDeal.apn
       );
+
+      // Send rich embed to Discord
+      await sendDiscordNotification(oldDeal.scoutName, oldDeal.apn);
     }
 
-    res
-      .status(200)
-      .json({ success: true, message: "Deal updated successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Deal updated successfully"
+    });
   } catch (error) {
     console.error("Error updating deal:", error);
     res.status(500).json({ success: false, message: error.message });
