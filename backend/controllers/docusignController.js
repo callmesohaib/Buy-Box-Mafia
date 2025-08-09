@@ -5,14 +5,28 @@ const nodemailer = require("nodemailer");
 const INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
 const USER_ID = process.env.DOCUSIGN_USER_ID;
 const IMPERSONATED_USER_GUID = USER_ID;
-const PRIVATE_KEY = process.env.DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, "\n");
+const PRIVATE_KEY_ENV = process.env.DOCUSIGN_PRIVATE_KEY;
+const PRIVATE_KEY = PRIVATE_KEY_ENV ? PRIVATE_KEY_ENV.replace(/\\n/g, "\n") : null;
 const BASE_PATH = "https://demo.docusign.net/restapi";
 const REDIRECT_URL = process.env.DOCUSIGN_REDIRECT_URL;
 const JWTLIFETIME = 3600;
+const OAUTH_BASE_PATH = "account-d.docusign.com";
 
 async function getJWTAuthToken() {
   const apiClient = new docusign.ApiClient();
   apiClient.setBasePath(BASE_PATH);
+  apiClient.setOAuthBasePath(OAUTH_BASE_PATH);
+
+  if (!INTEGRATION_KEY || !IMPERSONATED_USER_GUID || !PRIVATE_KEY) {
+    const missing = {
+      hasIntegrationKey: !!INTEGRATION_KEY,
+      hasUserId: !!IMPERSONATED_USER_GUID,
+      hasPrivateKey: !!PRIVATE_KEY,
+    };
+    const error = new Error("DocuSign configuration missing");
+    error.details = missing;
+    throw error;
+  }
 
   try {
     const results = await apiClient.requestJWTUserToken(
@@ -77,6 +91,7 @@ exports.createEnvelope = async (req, res) => {
       return res.status(500).json({
         error: "DocuSign authentication failed",
         details: authError.message,
+        ...(authError.details ? { missing: authError.details } : {}),
       });
     }
 
@@ -85,6 +100,7 @@ exports.createEnvelope = async (req, res) => {
     // Get accountId
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
      const clientUserId = req.body.clientUserId || "1"; // Default or from request
 
     // Build envelope definition
@@ -220,6 +236,7 @@ exports.getSigningUrl = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
 
     // list recipients and log them for debugging
@@ -297,6 +314,7 @@ exports.getEnvelopeStatus = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
@@ -326,6 +344,7 @@ exports.downloadSignedDocument = async (req, res) => {
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
     const docId = docsList.envelopeDocuments?.[0]?.documentId || "1";
@@ -371,6 +390,7 @@ exports.sendToSeller = async (req, res) => {
     apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
@@ -536,6 +556,7 @@ exports.getSellerEnvelopeStatus = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
@@ -566,6 +587,7 @@ exports.downloadSellerSignedDocument = async (req, res) => {
 
     const userInfo = await apiClient.getUserInfo(accessToken);
     const accountId = userInfo.accounts[0].accountId;
+    apiClient.setBasePath(`${userInfo.accounts[0].baseUri}/restapi`);
 
     const envelopesApi = new docusign.EnvelopesApi(apiClient);
     const docsList = await envelopesApi.listDocuments(accountId, envelopeId);
