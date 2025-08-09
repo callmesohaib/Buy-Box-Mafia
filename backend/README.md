@@ -46,6 +46,14 @@ EMAIL_PASSWORD=your-app-password
 # Server Configuration
 PORT=3001
 NODE_ENV=development
+
+# DocuSign Configuration (JWT + Embedded Signing)
+DOCUSIGN_INTEGRATION_KEY=your_integration_key_guid
+DOCUSIGN_USER_ID=your_impersonated_user_guid
+# For multi-line private keys, keep quotes and \n escapes
+DOCUSIGN_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n....\n-----END RSA PRIVATE KEY-----\n"
+# This must match the redirect URI you registered in the DocuSign app
+DOCUSIGN_REDIRECT_URL=http://localhost:3001/api/docusign/callback
 ```
 
 ### 3. Firebase Setup
@@ -163,6 +171,15 @@ node test-subadmin.js
 - Check if user already exists in Firebase Auth
 - Verify all required fields are provided
 - Check Firestore permissions
+
+### DocuSign Issues
+- Make sure the DocuSign env vars are present: `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_PRIVATE_KEY`, `DOCUSIGN_REDIRECT_URL`.
+- Grant consent once for JWT impersonation: open the URL from `GET /api/docusign/consent-url` in a browser, approve, then retry.
+- Verify outbound connectivity and DNS to DocuSign hosts. Call the health endpoint:
+  - `GET /api/docusign/health` should show `env` flags true and DNS lookups for `account-d.docusign.com` and `demo.docusign.net`.
+  - If you see `ENOTFOUND`, fix DNS or allowlist outbound HTTPS to DocuSign.
+- If you get `Signer is not configured for embedded signing`, ensure each recipient has a `clientUserId` when creating the envelope.
+- If you get `consent_required`, visit `/api/docusign/consent-url` and complete consent.
 
 ## Support
 
