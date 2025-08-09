@@ -3,25 +3,56 @@ import { PenTool, ExternalLink } from "lucide-react";
 import { fadeInUp, scaleIn } from "../../animations/animation";
 import { useState, useEffect } from "react";
 
-export default function SignatureStep({ envelopeId, signingUrl }) {
+export default function SignatureStep({ envelopeId, fullAddress }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [signingUrl, setSigningUrl] = useState(null);
   const [redirectAttempted, setRedirectAttempted] = useState(false);
 
-  // Only attempt redirect once when signingUrl becomes available
+  useEffect(() => {
+    const fetchSigningUrl = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetch(
+          `http://localhost:3001/api/docusign/get-signing-url/${envelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`
+        );
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const message = data?.error || data?.details || "Failed to get signing URL";
+          throw new Error(message);
+        }
+
+        if (!data?.url) {
+          throw new Error("DocuSign did not return a signing URL");
+        }
+
+        setSigningUrl(data.url);
+      } catch (err) {
+        setError(err.message || "Failed to get signing URL");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (envelopeId) {
+      fetchSigningUrl();
+    } else {
+      setError("Envelope ID is missing");
+      setLoading(false);
+    }
+  }, [envelopeId, fullAddress]);
+
+  // Redirect in same tab when URL is available
   useEffect(() => {
     if (signingUrl && !redirectAttempted) {
       setRedirectAttempted(true);
+      // optional small delay so user sees the UI change before redirect
       setTimeout(() => {
-        window.open(signingUrl, "_blank", "noopener,noreferrer");
-        setLoading(false);
-      }, 1000);
-    } else if (!signingUrl) {
-      const timer = setTimeout(() => {
-        setError("Signing URL not available. Please go back and try again.");
-        setLoading(false);
-      }, 3000);
-      return () => clearTimeout(timer);
+        // navigate in the same tab (not a new one)
+        window.location.href = signingUrl;
+      }, 400);
     }
   }, [signingUrl, redirectAttempted]);
 
@@ -44,7 +75,7 @@ export default function SignatureStep({ envelopeId, signingUrl }) {
         
         {loading && (
           <div className="bg-blue-500/10 border border-blue-500/30 text-blue-500 p-3 rounded-lg mb-4">
-            <p>Preparing your document for signing...</p>
+            <p>Generating signing session...</p>
             <div className="mt-2 flex justify-center">
               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -58,22 +89,22 @@ export default function SignatureStep({ envelopeId, signingUrl }) {
               onClick={() => window.location.reload()}
               className="flex items-center justify-center gap-2 w-full bg-red-500 text-white py-2 px-4 rounded font-medium hover:bg-red-600 transition-colors"
             >
-              Refresh Page
+              Try Again
             </button>
           </div>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && signingUrl && (
           <div className="mt-6">
             <button
-              onClick={() => signingUrl && window.open(signingUrl, "_blank", "noopener,noreferrer")}
+              onClick={() => { window.location.href = signingUrl; }}
               className="flex items-center justify-center gap-3 w-full bg-[var(--mafia-red)] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[var(--mafia-red)]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--mafia-red)] shadow"
             >
               <ExternalLink size={20} />
               Open Signing Page
             </button>
             <p className="text-xs text-[var(--secondary-gray-text)] mt-2">
-              If signing didn't start automatically, click above to open DocuSign
+              If signing didn't start automatically, click above to open DocuSign in this tab
             </p>
           </div>
         )}
