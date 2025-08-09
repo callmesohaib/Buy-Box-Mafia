@@ -5,7 +5,8 @@ const nodemailer = require("nodemailer");
 const INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
 const USER_ID = process.env.DOCUSIGN_USER_ID;
 const IMPERSONATED_USER_GUID = USER_ID;
-const PRIVATE_KEY = process.env.DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, "\n");
+const PRIVATE_KEY_RAW = process.env.DOCUSIGN_PRIVATE_KEY || "";
+const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, "\n") : "";
 const BASE_PATH = "https://demo.docusign.net/restapi";
 const REDIRECT_URL = process.env.DOCUSIGN_REDIRECT_URL;
 const JWTLIFETIME = 3600;
@@ -153,6 +154,7 @@ exports.createEnvelope = async (req, res) => {
           signHereTabs: [
             {
               anchorString: recipient.anchorString || "/sn1/",
+              anchorIgnoreIfNotPresent: true,
               anchorYOffset: recipient.anchorYOffset || "10",
               anchorUnits: recipient.anchorUnits || "pixels",
               anchorXOffset: recipient.anchorXOffset || "20",

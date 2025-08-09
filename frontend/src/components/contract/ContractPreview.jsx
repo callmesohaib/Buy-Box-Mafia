@@ -83,8 +83,15 @@ export function generateContractPDF(contractData, formData) {
     doc.addPage(); drawBorder(); y = marginTop + 10;
   }
   doc.text('_____________________________   _______________', marginLeft, y);
+  const firstBuyerLineY = y;
   y += lineHeight;
   doc.text('Buyer                                            Date', marginLeft, y);
+  
+  // Insert a small anchor string for DocuSign to detect the signHere tab
+  doc.setFontSize(8);
+  doc.text('/sn1/', marginLeft + 10, firstBuyerLineY - 4);
+  doc.setFontSize(11);
+
   y += lineHeight * 2;
   doc.text('_____________________________   _______________', marginLeft, y);
   y += lineHeight;
