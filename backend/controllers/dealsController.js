@@ -176,26 +176,6 @@ exports.getDealById = async (req, res) => {
   }
 };
 
-// Get deals by MLS number
-exports.getDealsByMlsNumber = async (req, res) => {
-  try {
-    const { mlsNumber } = req.params;
-    const dealsSnapshot = await db
-      .collection("deals")
-      .where("mlsNumber", "==", mlsNumber)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const deals = dealsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    res.status(200).json(deals);
-  } catch (error) {
-    console.error("Error fetching deals by MLS number:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
 async function sendDiscordNotification(scoutName, dealId) {
   try {
     await axios.post(DISCORD_WEBHOOK_URL, {
@@ -203,7 +183,7 @@ async function sendDiscordNotification(scoutName, dealId) {
         {
           title: "🎉 Deal Approved!",
           description: `A deal has just been **approved** by our team!`,
-          color: 0x4caf50, // Green color
+          color: 0x4caf50,
           fields: [
             {
               name: "Scout Name",
@@ -242,19 +222,40 @@ exports.updateDeal = async (req, res) => {
 
     const dealRef = db.collection("deals").doc(id);
     const dealSnapshot = await dealRef.get();
+
+    if (!dealSnapshot.exists) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Deal not found" });
+    }
+
     const oldDeal = dealSnapshot.data();
 
     await dealRef.update(updateData);
 
+    if (updateData.assignedBuyerId && updateData.assignedBuyerName) {
+      if (oldDeal.scoutEmail) {
+        await sendBuyerAssignmentEmail(
+          oldDeal.scoutEmail,
+          oldDeal.scoutName,
+          updateData.assignedBuyerName,
+          oldDeal.apn
+        );
+        await sendBuyerAssignmentDiscord(
+          oldDeal.scoutEmail,
+          oldDeal.scoutName,
+          updateData.assignedBuyerName,
+          oldDeal.apn
+        );
+      }
+    }
+
     if (updateData.status === "Approved" && oldDeal.scoutEmail) {
-      // Send email
       await sendApprovalEmail(
         oldDeal.scoutEmail,
         oldDeal.scoutName,
         oldDeal.apn
       );
-
-      // Send rich embed to Discord
       await sendDiscordNotification(oldDeal.scoutName, oldDeal.apn);
     }
 
@@ -267,6 +268,111 @@ exports.updateDeal = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+async function sendBuyerAssignmentDiscord(
+  scoutEmail,
+  scoutName,
+  buyerName,
+  apn
+) {
+  try {
+    await axios.post(DISCORD_WEBHOOK_URL, {
+      embeds: [
+        {
+          title: "🛒 Deal Assigned to Buyer",
+          description: `A deal has been assigned to a buyer.`,
+          color: 0x4caf50,
+          fields: [
+            {
+              name: "Scout Name",
+              value: scoutName,
+              inline: true,
+            },
+            {
+              name: "Buyer Name",
+              value: buyerName,
+              inline: true,
+            },
+            {
+              name: "APN",
+              value: apn,
+              inline: true,
+            },
+          ],
+          footer: {
+            text: `Buy Box Mafia • ${new Date().toLocaleDateString()}`,
+          },
+          timestamp: new Date(),
+        },
+      ],
+    });
+
+    console.log("✅ Discord notification sent!");
+  } catch (err) {
+    console.error("❌ Failed to send Discord notification:", err.message);
+  }
+}
+
+async function sendBuyerAssignmentEmail(scoutEmail, scoutName, buyerName, apn) {
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+  });
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: scoutEmail,
+    subject: "📌 Deal Assigned to Buyer - Buy Box Mafia",
+    html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      
+      <!-- Header -->
+      <div style="background: linear-gradient(135deg, #d72638, #ff1744); color: white; padding: 25px; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px;">Buy Box Mafia</h1>
+        <p style="margin: 10px 0 0 0; font-size: 18px;">Deal Assignment Notification</p>
+      </div>
+      
+      <!-- Body -->
+      <div style="padding: 30px; background: #f9f9f9;">
+        <h2 style="color: #333; margin-top: 0;">Hello ${
+          scoutName || "Scout"
+        },</h2>
+        
+        <p style="color: #666; line-height: 1.6; font-size: 16px;">
+          We wanted to let you know that your deal with APN <strong>${apn}</strong> has been assigned to a buyer.
+        </p>
+        
+        <div style="background: #fff; border-left: 4px solid #ff1744; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+          <p style="margin: 0; color: #333; font-weight: bold;">🛒 Assigned Buyer: ${buyerName}</p>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+            This buyer has been selected as the best fit for your submitted deal.
+          </p>
+        </div>
+        
+        <p style="color: #666; line-height: 1.6; font-size: 14px;">
+          <strong>What’s Next?</strong><br>
+          - Our team will coordinate with the buyer to move forward<br>
+          - You’ll be notified about any significant updates<br>
+          - Feel free to reach out if you have questions
+        </p>
+      </div>
+      
+      <!-- Footer -->
+      <div style="background: #333; color: white; padding: 20px; text-align: center; font-size: 14px;">
+        <p style="margin: 0 0 10px 0;">Need help? Contact our support team</p>
+        <p style="margin: 0;">
+          © ${new Date().getFullYear()} Buy Box Mafia. All rights reserved.<br>
+          <span style="color: #aaa;">123 Business Ave, Your City, ST 12345</span>
+        </p>
+      </div>
+    </div>
+  `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
 
 async function sendApprovalEmail(email, scoutName, dealId) {
   // Create reusable transporter object using SMTP transport

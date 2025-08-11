@@ -62,8 +62,6 @@ export const getDealById = async (id) => {
   return res.json();
 };
 
-
-
 // Get deals by status
 export const getDealsByStatus = async (status) => {
   const token = getAuthToken();
@@ -139,9 +137,7 @@ export const getMyDeals = async (user) => {
   const deals = await getDeals();
   if (!user) return [];
   return deals.filter(
-    (deal) =>
-      deal.submittedBy === user.email ||
-      deal.submittedBy === user.id
+    (deal) => deal.submittedBy === user.email || deal.submittedBy === user.id
   );
 };
 

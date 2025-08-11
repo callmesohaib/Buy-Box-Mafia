@@ -11,10 +11,6 @@ router.get("/", dealsController.getDeals);
 
 // Get a single deal by ID
 router.get("/:id", dealsController.getDealById);
-
-// Get deals by MLS number
-router.get("/mls/:mlsNumber", dealsController.getDealsByMlsNumber);
-
 // Get deals by status
 router.get("/status/:status", dealsController.getDealsByStatus);
 
