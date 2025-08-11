@@ -99,7 +99,6 @@ export const subadminService = {
   // Delete subadmin
   deleteSubadmin: async (id) => {
     try {
-      console.log("Deleting subadmin with ID:", id);
 
       const response = await fetch(`${API_BASE_URL}/subadmin/${id}`, {
         method: "DELETE",
@@ -108,7 +107,6 @@ export const subadminService = {
         },
       });
 
-      console.log("Delete response status:", response.status);
 
       if (!response.ok) {
         let errorMessage = "Failed to delete subadmin";

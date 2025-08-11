@@ -157,7 +157,6 @@ export default function DealsTable() {
         setIsLoading(true);
         setError(null);
         const fetchedDeals = await getDeals();
-        console.log("Fetched deals:", fetchedDeals);
         setDealList(fetchedDeals);
       } catch (error) {
         console.error("Error fetching deals:", error);

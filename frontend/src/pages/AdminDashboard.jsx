@@ -9,7 +9,6 @@ function AdminDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, isAuthenticated } = useAuth();
   const role = user?.role
-  console.log("User role in AdminDashboard:", role)
 
   if (!isAuthenticated || !user) {
     return (

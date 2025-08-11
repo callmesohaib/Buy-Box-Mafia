@@ -56,7 +56,6 @@ function formatDate(date) {
 
   const d = new Date(dateToFormat);
   if (isNaN(d.getTime())) {
-    console.log('Invalid date value:', date, 'type:', typeof date);
     return 'Invalid Date';
   }
 

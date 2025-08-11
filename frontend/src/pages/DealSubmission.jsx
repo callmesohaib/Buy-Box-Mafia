@@ -46,7 +46,6 @@ export default function DealSubmission() {
 
 
   const [formData, setFormData] = useState(initialFormData);
-  // console.log("Submission FormData:", formData)
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
@@ -137,7 +136,6 @@ export default function DealSubmission() {
     let uploaded = null;
 
     try {
-      console.log("Submitting formData (client):", formData);
 
       if (selectedFile) {
         const uploadResp = await uploadFileToServer(selectedFile);

@@ -209,7 +209,6 @@ async function sendDiscordNotification(scoutName, dealId) {
       ],
     });
 
-    console.log("✅ Discord notification sent!");
   } catch (err) {
     console.error("❌ Failed to send Discord notification:", err.message);
   }
@@ -307,7 +306,6 @@ async function sendBuyerAssignmentDiscord(
       ],
     });
 
-    console.log("✅ Discord notification sent!");
   } catch (err) {
     console.error("❌ Failed to send Discord notification:", err.message);
   }
