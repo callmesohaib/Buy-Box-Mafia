@@ -2,7 +2,8 @@ const { db, admin } = require("../utils/firebase");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
 
-const DISCORD_WEBHOOK_URL ="https://discord.com/api/webhooks/1403705792003051633/CtZhBmw__sJRTJ1_4Q74ChXuQbK-cZ0MNfDwUP9E6jAixXiJTEwsonezkilYryDMlnT5";
+const DISCORD_WEBHOOK_URL =
+  "https://discord.com/api/webhooks/1403705792003051633/CtZhBmw__sJRTJ1_4Q74ChXuQbK-cZ0MNfDwUP9E6jAixXiJTEwsonezkilYryDMlnT5";
 // Transform request body to Firestore deal format
 const toFirestoreDeal = (body) => {
   // Helper to safely get value or fallback to null
@@ -36,6 +37,8 @@ const toFirestoreDeal = (body) => {
     apn: safe(body.apn, ""),
     listDate: safe(body.listDate, ""),
     status: safe(body.status, "Pending"),
+    taxAssessedValue: safe(body.taxAssessedValue, "N/A"),
+    annualTaxes: safe(body.annualTaxes, "N/A"),
 
     // Offer Details
     offerPrice: safe(body.propertyPrice, ""),
@@ -57,9 +60,19 @@ const toFirestoreDeal = (body) => {
     dealStatus: safe(body.status, "Pending"), // Use the same status from dropdown
     dealId: safe(body.dealId, ""),
 
-    // File Upload (store file name or null, not the file object)
     contractFile:
-      body.contractFile && body.contractFile.name
+      body.contractFile && typeof body.contractFile === "object"
+        ? {
+            url: body.contractFile.url || null,
+            public_id:
+              body.contractFile.public_id || body.contractFile.publicId || null,
+            original_filename:
+              body.contractFile.original_filename ||
+              body.contractFile.originalFilename ||
+              null,
+            bytes: body.contractFile.bytes || null,
+          }
+        : body.contractFile && body.contractFile.name
         ? body.contractFile.name
         : null,
 
@@ -190,30 +203,30 @@ async function sendDiscordNotification(scoutName, dealId) {
         {
           title: "🎉 Deal Approved!",
           description: `A deal has just been **approved** by our team!`,
-          color: 0x4CAF50, // Green color
+          color: 0x4caf50, // Green color
           fields: [
             {
               name: "Scout Name",
               value: scoutName,
-              inline: true
+              inline: true,
             },
             {
               name: "Deal ID",
               value: dealId,
-              inline: true
+              inline: true,
             },
             {
               name: "Status",
               value: "✅ Approved",
-              inline: true
-            }
+              inline: true,
+            },
           ],
           footer: {
             text: `Buy Box Mafia • ${new Date().toLocaleDateString()}`,
           },
-          timestamp: new Date()
-        }
-      ]
+          timestamp: new Date(),
+        },
+      ],
     });
 
     console.log("✅ Discord notification sent!");
@@ -247,7 +260,7 @@ exports.updateDeal = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Deal updated successfully"
+      message: "Deal updated successfully",
     });
   } catch (error) {
     console.error("Error updating deal:", error);

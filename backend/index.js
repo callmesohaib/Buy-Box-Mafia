@@ -10,6 +10,8 @@ const buyerRoutes = require("./routers/buyerRoutes");
 const dealsRoutes = require("./routers/dealsRoutes");
 const { admin } = require("./utils/firebase");
 const scoutRoutes = require("./routers/scoutRoutes");
+const uploadRoutes = require("./routers/uploadRoutes");
+
 
 // Initialize Firebase
 require("./utils/firebase");
@@ -27,8 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corOptions));
 app.use("/api/docusign", docusignRoutes);
-
-
+app.use("/api/uploads", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", forgotPasswordRoutes);
 app.use("/api/subadmin", subadminRoutes);

@@ -34,7 +34,7 @@ export default function PropertySearch() {
     id: propertyData.identifier?.attomId || propertyData.identifier?.Id || 'N/A',
     apn: propertyData.identifier?.apn || 'N/A',
     address: propertyData.address,
-    price: formatPrice(propertyData.sale?.amount?.saleAmt),
+    price: formatPrice(propertyData.assessment?.assessed?.assdTtlValue),
     size: formatSize(propertyData.building?.size),
     zoningType: propertyData.lot?.zoningType || propertyData.summary?.propertyType || 'Property',
     propertyType: propertyData.summary?.propClass || 'N/A',

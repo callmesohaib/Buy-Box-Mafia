@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../store/AuthContext";
 import { ChevronLeft, Upload, FileText, MapPin, User, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
 import { addDeal } from "../services/dealsService";
+import { uploadFileToServer, deleteUploadedFile } from "../services/contractService";
 import { useProperty } from "../store/PropertyContext";
 import { fadeInDown, staggerContainer, staggerItem, buttonHover, modalBackdrop, modalContent } from "../animations/animation";
 
@@ -30,7 +31,9 @@ export default function DealSubmission() {
       urlAddress: decodeURIComponent(fullAddress),
       matchedBuyers: location.state.contractData.matchedBuyers || [],
       buyersCount: location.state.contractData.matchedBuyers?.length || 0,
-      buyerIds: location.state.contractData.buyerIds || []
+      buyerIds: location.state.contractData.buyerIds || [],
+      taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
+      annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
     }
     : {
       status: "pending",
@@ -43,7 +46,7 @@ export default function DealSubmission() {
 
 
   const [formData, setFormData] = useState(initialFormData);
-  console.log("Submission FormData:", formData)
+  // console.log("Submission FormData:", formData)
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
@@ -86,6 +89,8 @@ export default function DealSubmission() {
         buyersCount: location.state.contractData.matchedBuyers?.length || 0,
         buyerIds: location.state.contractData.buyerIds || prev.buyerIds || [],
         urlAddress: decodeURIComponent(fullAddress),
+        taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
+        annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
 
       }));
     }
@@ -120,7 +125,7 @@ export default function DealSubmission() {
       setSelectedFile(file);
       setFormData(prev => ({
         ...prev,
-        contractFile: file
+        contractFile: null
       }));
     } else {
       alert("Please select a valid PDF file");
@@ -129,10 +134,46 @@ export default function DealSubmission() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    let uploaded = null;
+
     try {
-      await addDeal(formData);
+      console.log("Submitting formData (client):", formData);
+
+      if (selectedFile) {
+        const uploadResp = await uploadFileToServer(selectedFile);
+        if (!uploadResp || !uploadResp.file) {
+          throw new Error("Upload failed: no file returned");
+        }
+        uploaded = uploadResp.file;
+      }
+      const { contractFile: _discard, ...rest } = formData;
+
+      const payload = {
+        ...rest,
+        contractFile: uploaded
+          ? {
+            url: uploaded.url,
+            public_id: uploaded.public_id,
+            original_filename: uploaded.original_filename || selectedFile?.name,
+            bytes: uploaded.bytes || null,
+            format: uploaded.format || null,
+          }
+          : null,
+      };
+
+      await addDeal(payload);
       setShowModal(true);
     } catch (error) {
+      console.error("Submit error:", error);
+      if (uploaded && uploaded.public_id) {
+        try {
+          await deleteUploadedFile(uploaded.public_id);
+          console.info("Cleanup: removed uploaded file", uploaded.public_id);
+        } catch (err) {
+          console.warn("Cleanup failed for", uploaded.public_id, err);
+        }
+      }
+
       alert(error.message || "Failed to submit deal. Please try again.");
     } finally {
       setIsLoading(false);
@@ -162,7 +203,7 @@ export default function DealSubmission() {
     roadAccess: contractData.roadAccess || 'N/A',
     topography: contractData.topography || 'N/A',
     floodZone: contractData.floodZone || 'N/A',
-    taxAssessedValue: propertyData.assessment.assessed?.assdTtlValue || 'N/A',
+    taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
     annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
   };
   return (

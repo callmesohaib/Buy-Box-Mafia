@@ -72,7 +72,7 @@ export default function ValuationResult() {
 
     // Budget match
     total++;
-    const price = Number(property.sale?.amount?.saleAmt);
+    const price = Number(property.assessment?.assessed?.assdTtlValue);
     const min = Number(buyer.budgetMin);
     const max = Number(buyer.budgetMax);
 
@@ -250,12 +250,12 @@ export default function ValuationResult() {
                 </div>
                 <p className="text-green-200 text-sm mb-3">
                   There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
-                  We can sell it to them for <span className="font-bold">{propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt}` : 'N/A'}</span>.
+                  We can sell it to them for <span className="font-bold">{propertyData.assessment?.assessed?.assdTtlValue ? `$${propertyData.assessment.assessed.assdTtlValue}` : 'N/A'}</span>.
                 </p>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <TrendingUp size={14} className="text-green-300" />
-                    <span className="text-green-200">List Price: {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt}` : 'N/A'}</span>
+                    <span className="text-green-200">List Price: {propertyData.assessment?.assessed?.assdTtlValue ? `$${propertyData.assessment?.assessed?.assdTtlValue}` : 'N/A'}</span>
                   </div>
                 </div>
               </motion.div>
@@ -268,7 +268,7 @@ export default function ValuationResult() {
                   <div>
                     <p className="text-sm text-[var(--secondary-gray-text)]">List Price</p>
                     <p className="text-lg font-bold text-white">
-                      {propertyData.sale?.amount?.saleAmt ? `$${propertyData.sale.amount.saleAmt.toLocaleString()}` : 'N/A'}
+                      {propertyData.assessment?.assessed?.assdTtlValue ? `$${propertyData.assessment?.assessed?.assdTtlValue.toLocaleString()}` : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -340,7 +340,7 @@ export default function ValuationResult() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-900/30 rounded-xl border border-green-700">
-                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.sale.amount.saleAmt || 'N/A'}</div>
+                <div className="text-2xl font-bold text-green-300 mb-1">${propertyData.assessment?.assessed?.assdTtlValue || 'N/A'}</div>
                 <div className="text-sm text-green-200 font-medium mb-2">List Price</div>
                 <div className="flex items-center justify-center gap-1 text-xs text-green-300">
 
@@ -555,7 +555,7 @@ export default function ValuationResult() {
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Swimming Pool</span>
-                <span className="text-white font-semibold">{propertyData.lot?.poolType.toLocaleString()}</span>
+                <span className="text-white font-semibold">{propertyData.lot?.poolType || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-[var(--tertiary-gray-bg)] rounded-xl">
                 <span className="text-[var(--primary-gray-text)] font-medium">Built Year</span>
