@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../store/AuthContext";
 import { ChevronLeft, Upload, FileText, MapPin, User, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
-import { addDeal } from "../services/dealsService";
+import { addDeal, updateDeal } from "../services/dealsService";
 import { uploadFileToServer, deleteUploadedFile } from "../services/contractService";
 import { useProperty } from "../store/PropertyContext";
 import { fadeInDown, staggerContainer, staggerItem, buttonHover, modalBackdrop, modalContent } from "../animations/animation";
@@ -13,27 +14,34 @@ export default function DealSubmission() {
   const { fullAddress } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-
-
   const { fetchProperty, clearProperty, propertyData } = useProperty();
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [localPropertyData, setLocalPropertyData] = useState(null);
-
+  const [error, setError] = useState(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [matchedBuyers, setMatchedBuyers] = useState([]);
+  const [buyersLoading, setBuyersLoading] = useState(false);
+  const [buyersError, setBuyersError] = useState(null);
+  const isEditing = location.state?.isEditing || false;
   const dealId = location.state?.dealId;
   const initialFormData = location.state?.contractData
     ? {
       ...location.state.contractData,
-      status: "pending",
-      scoutNotes: location.state.contractData.scoutNotes || "",
-      contractFile: null,
+      status: location.state?.contractData?.status || "pending",
+      scoutNotes: location.state?.contractData?.scoutNotes || "",
+      contractFile: location.state?.contractData?.contractFile || null,
       urlAddress: decodeURIComponent(fullAddress),
-      matchedBuyers: location.state.contractData.matchedBuyers || [],
-      buyersCount: location.state.contractData.matchedBuyers?.length || 0,
-      buyerIds: location.state.contractData.buyerIds || [],
-      taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
-      annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
+      matchedBuyers: location.state?.contractData?.matchedBuyers || [],
+      buyersCount: location.state?.contractData?.matchedBuyers?.length || 0,
+      buyerIds: location.state?.contractData?.buyerIds || [],
+      taxAssessedValue: location.state?.contractData?.taxAssessedValue ||
+        propertyData?.assessment?.assessed?.assdLandValue || 'N/A',
+      annualTaxes: location.state?.contractData?.annualTaxes ||
+        propertyData?.assessment?.tax?.taxAmt || 'N/A',
+      propertyType: location.state?.contractData?.propertyType ||
+        propertyData?.summary?.propClass || 'N/A',
     }
     : {
       status: "pending",
@@ -41,15 +49,119 @@ export default function DealSubmission() {
       contractFile: null,
       matchedBuyers: [],
       buyersCount: 0,
-      buyerIds: []
+      buyerIds: [],
+      propertyType: propertyData?.summary?.propClass || 'N/A'
     };
+  const calculateBuyerMatch = useCallback((property, buyer) => {
+    if (!property || !buyer) return 0;
+
+    let score = 0, total = 0;
+    const zoning = Array.isArray(buyer.zoningTypes) ?
+      buyer.zoningTypes :
+      buyer.zoningTypes ? [buyer.zoningTypes] : [];
+
+    const locations = Array.isArray(buyer.buyingLocations) ?
+      buyer.buyingLocations :
+      buyer.buyingLocations ? [buyer.buyingLocations] : [];
+
+    // 1. City match
+    total++;
+    if (property.propertyCity?.toLowerCase() === buyer.city?.toLowerCase()) {
+      score++;
+    }
+
+    // 2. Country match
+    total++;
+    if (property.propertyCountry?.toLowerCase() === buyer.country?.toLowerCase()) {
+      score++;
+    }
+
+    // 3. Property type match
+    total++;
+    if (zoning.some(z => z?.toLowerCase() === property.propertyType?.toLowerCase())) {
+      score++;
+    }
+
+    // 4. Locations match
+    total++;
+    if (locations.some(l => l?.toLowerCase() === property.propertyCity?.toLowerCase())) {
+      score++;
+    }
+
+    // 5. Budget match
+    total++;
+    const price = Number(property.propertyPrice);
+    const min = Number(buyer.budgetMin);
+    const max = Number(buyer.budgetMax);
+
+    if (!isNaN(price)) {
+      if (!isNaN(min) && !isNaN(max) && price >= min && price <= max) {
+        score++;
+      }
+      else if (!isNaN(min) && isNaN(max) && price >= min) {
+        score++;
+      }
+      else if (isNaN(min) && !isNaN(max) && price <= max) {
+        score++;
+      }
+    }
+
+    const matchPercent = Math.round((score / total) * 100);
+    return matchPercent;
+  }, []);
+  useEffect(() => {
+    if (initialFormData && !buyersLoading && !buyersError) {
+      const fetchAndMatchBuyers = async () => {
+        setBuyersLoading(true);
+        setBuyersError(null);
+
+        try {
+          const response = await fetch("http://localhost:3001/api/buyers");
+          if (!response.ok) throw new Error("Failed to fetch buyers");
+
+          const buyers = await response.json();
+
+          // Create a property object that matches what calculateBuyerMatch expects
+          const propertyForMatching = {
+            propertyCity: propertyData?.address?.locality,
+            propertyCountry: propertyData?.address?.country,
+            propertyType: propertyData?.summary?.propClass,
+            propertyPrice: propertyData?.assessment?.assessed?.assdTtlValue
+          };
+
+          const matches = buyers
+            .map(buyer => ({
+              ...buyer,
+              matchPercent: calculateBuyerMatch(initialFormData, buyer)
+            }))
+            .filter(b => b.matchPercent > 0)
+            .sort((a, b) => b.matchPercent - a.matchPercent);
 
 
+          setFormData(prev => ({
+            ...prev,
+            matchedBuyers: matches,
+            buyersCount: matches.length,
+            buyerIds: matches.map(b => b.id)
+          }));
+        } catch (err) {
+          console.error("Buyer fetch/match error:", err);
+          setBuyersError(err.message);
+        } finally {
+          setBuyersLoading(false);
+        }
+      };
+
+      fetchAndMatchBuyers();
+    }
+  }, [propertyData, calculateBuyerMatch]);
   const [formData, setFormData] = useState(initialFormData);
   useEffect(() => {
     let isMounted = true;
+    setIsLoadingData(true);
+
     const fetchData = async () => {
-      if (fullAddress) {
+      if (fullAddress && !location.state?.contractData) {
         try {
           const query = decodeURIComponent(fullAddress);
           const data = await fetchProperty(query);
@@ -58,6 +170,18 @@ export default function DealSubmission() {
           }
         } catch (err) {
           console.error("Error fetching property:", err);
+          if (isMounted) {
+            setError("Failed to load property data");
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoadingData(false);
+          }
+        }
+      } else {
+        if (isMounted) {
+          setLocalPropertyData({});
+          setIsLoadingData(false);
         }
       }
     };
@@ -68,7 +192,7 @@ export default function DealSubmission() {
       isMounted = false;
       clearProperty();
     };
-  }, []);
+  }, [fullAddress, location.state?.contractData]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -84,16 +208,26 @@ export default function DealSubmission() {
         scoutPhone: user?.phone || "",
         Company: user?.company || "Buy Box Mafia",
         submittedBy: user?.id || user?.uid,
-        matchedBuyers: location.state.contractData.matchedBuyers || prev.matchedBuyers || [],
-        buyersCount: location.state.contractData.matchedBuyers?.length || 0,
-        buyerIds: location.state.contractData.buyerIds || prev.buyerIds || [],
         urlAddress: decodeURIComponent(fullAddress),
-        taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
-        annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
-
+        // Don't overwrite matched buyers if they've been calculated
+        matchedBuyers: prev.matchedBuyers.length > 0 ? prev.matchedBuyers :
+          (location.state.contractData.matchedBuyers || []),
+        buyersCount: prev.matchedBuyers.length > 0 ? prev.matchedBuyers.length :
+          (location.state.contractData.matchedBuyers?.length || 0),
+        buyerIds: prev.matchedBuyers.length > 0 ? prev.matchedBuyers.map(b => b.id) :
+          (location.state.contractData.buyerIds || []),
+        taxAssessedValue: location.state.contractData.taxAssessedValue ||
+          propertyData?.assessment?.assessed?.assdLandValue ||
+          'N/A',
+        annualTaxes: location.state.contractData.annualTaxes ||
+          propertyData?.assessment?.tax?.taxAmt ||
+          'N/A',
+        propertyType: location.state.contractData.propertyType ||
+          propertyData?.summary?.propClass ||
+          'N/A'
       }));
     }
-  }, [location.state?.contractData, user]);
+  }, [location.state?.contractData, user, fullAddress]);
 
   const removeFile = () => {
     setSelectedFile(null);
@@ -130,54 +264,97 @@ export default function DealSubmission() {
       alert("Please select a valid PDF file");
     }
   };
-
   const handleSubmit = async () => {
     setIsLoading(true);
     let uploaded = null;
 
     try {
 
+      const currentDealId = isEditing ? (formData.id || formData.dealId || dealId || id) : null;
       if (selectedFile) {
         const uploadResp = await uploadFileToServer(selectedFile);
-        if (!uploadResp || !uploadResp.file) {
+        if (!uploadResp?.file) {
           throw new Error("Upload failed: no file returned");
         }
         uploaded = uploadResp.file;
-      }
-      const { contractFile: _discard, ...rest } = formData;
-
-      const payload = {
-        ...rest,
-        contractFile: uploaded
-          ? {
-            url: uploaded.url,
-            public_id: uploaded.public_id,
-            original_filename: uploaded.original_filename || selectedFile?.name,
-            bytes: uploaded.bytes || null,
-            format: uploaded.format || null,
+        if (isEditing && formData.contractFile?.public_id) {
+          try {
+            await deleteUploadedFile(formData.contractFile.public_id);
+          } catch (err) {
+            console.warn("Failed to delete old file:", err);
           }
-          : null,
-      };
-
-      await addDeal(payload);
-      setShowModal(true);
-    } catch (error) {
-      console.error("Submit error:", error);
-      if (uploaded && uploaded.public_id) {
-        try {
-          await deleteUploadedFile(uploaded.public_id);
-          console.info("Cleanup: removed uploaded file", uploaded.public_id);
-        } catch (err) {
-          console.warn("Cleanup failed for", uploaded.public_id, err);
         }
       }
 
-      alert(error.message || "Failed to submit deal. Please try again.");
+      const payload = {
+        ...Object.fromEntries(
+          Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null)
+        ),
+        // Only include file data if we uploaded a new file
+        ...(uploaded && {
+          contractFile: {
+            url: uploaded.url,
+            public_id: uploaded.public_id,
+            original_filename: uploaded.original_filename || selectedFile?.name,
+            bytes: uploaded.bytes,
+            format: uploaded.format,
+          }
+        }),
+        // Ensure we have the dealId for updates
+        ...(isEditing && { id: currentDealId }), // Include ID for updates
+      };
+
+
+      // Determine if we're updating or creating
+      if (isEditing && currentDealId) {
+        const response = await updateDeal(currentDealId, payload);
+
+        // Show success message
+        setShowModal({
+          show: true,
+          title: "Deal Updated",
+          message: "Your deal has been successfully updated!",
+          isSuccess: true
+        });
+      } else {
+        const response = await addDeal(payload);
+
+        // Show success message
+        setShowModal({
+          show: true,
+          title: "Deal Created",
+          message: "Your new deal has been successfully created!",
+          isSuccess: true
+        });
+
+        // If creating new deal, store the new dealId
+        if (response?.dealId) {
+          setFormData(prev => ({ ...prev, dealId: response.dealId }));
+        }
+      }
+
+    } catch (error) {
+      console.error("Submit error:", error);
+      // Clean up uploaded file if submission failed
+      if (uploaded?.public_id) {
+        try {
+          await deleteUploadedFile(uploaded.public_id);
+        } catch (err) {
+          console.warn("Cleanup failed for uploaded file:", err);
+        }
+      }
+
+      // Show error message
+      setShowModal({
+        show: true,
+        title: "Error",
+        message: error.message || "Failed to submit deal. Please try again.",
+        isSuccess: false
+      });
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleConfirmSubmit = () => {
     setShowModal(false);
     navigate("/property-search");
@@ -196,14 +373,42 @@ export default function DealSubmission() {
     ownerPhone: contractData.sellerPhone || 'N/A',
     ownerEmail: contractData.sellerEmail || 'N/A',
     lastContact: contractData.lastContact || 'N/A',
-    propertyType: propertyData.summary?.propertyType || 'N/A',
+    propertyType: contractData.propertyType || 'N/A', // Use the value from contractData
     utilities: contractData.utilities || 'N/A',
     roadAccess: contractData.roadAccess || 'N/A',
     topography: contractData.topography || 'N/A',
     floodZone: contractData.floodZone || 'N/A',
-    taxAssessedValue: propertyData.assessment.assessed?.assdLandValue || 'N/A',
-    annualTaxes: propertyData.assessment.tax?.taxAmt || 'N/A'
+    taxAssessedValue: contractData.taxAssessedValue || 'N/A', // Use the value from contractData
+    annualTaxes: contractData.annualTaxes || 'N/A' // Use the value from contractData
   };
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--mafia-red)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--secondary-gray-text)]">
+            {location.state?.contractData ? "Loading deal..." : "Loading property data..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[var(--secondary-gray-text)] mb-4">{error}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-[var(--mafia-red)] text-white px-6 py-3 rounded-xl hover:bg-[var(--mafia-red-hover)] transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -294,26 +499,44 @@ export default function DealSubmission() {
                 </div>
               </div>
 
+
               {/* Buyer Matching Information */}
               <div className="mt-6 pt-6 border-t border-[var(--tertiary-gray-bg)]">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <Users size={20} className="text-green-500" />
-                  Buyer Matching ({formData.buyersCount || 0} matches)
+                  Buyer Matching
+                  {buyersLoading ? (
+                    <span className="text-sm text-[var(--secondary-gray-text)] ml-2">(Loading...)</span>
+                  ) : (
+                    <span>({formData.matchedBuyers?.length || 0} matches)</span>
+                  )}
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Matched Buyers</span>
-                    <span className="text-sm font-semibold text-green-400">{formData.matchedBuyers.length || 0}</span>
+
+                {buyersLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-4 h-4 border-2 border-[var(--mafia-red)] border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <span className="text-sm text-[var(--primary-gray-text)]">Finding matching buyers...</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
-                    <span className="text-sm font-medium text-[var(--primary-gray-text)]">Top Match Score</span>
-                    <span className="text-sm font-semibold text-[var(--gold)]">
-                      {formData.matchedBuyers && formData.matchedBuyers.length > 0
-                        ? `${formData.matchedBuyers[0].matchPercent}%`
-                        : 'N/A'}
-                    </span>
+                ) : buyersError ? (
+                  <div className="text-sm text-red-500 py-2">{buyersError}</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
+                      <span className="text-sm font-medium text-[var(--primary-gray-text)]">Matched Buyers</span>
+                      <span className="text-sm font-semibold text-green-400">
+                        {formData.matchedBuyers?.length || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-[var(--primary-gray-bg)] rounded-lg">
+                      <span className="text-sm font-medium text-[var(--primary-gray-text)]">Top Match Score</span>
+                      <span className="text-sm font-semibold text-[var(--gold)]">
+                        {formData.matchedBuyers?.length > 0
+                          ? `${formData.matchedBuyers[0].matchPercent}%`
+                          : 'N/A'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Owner Information */}
@@ -375,72 +598,110 @@ export default function DealSubmission() {
             </div>
 
             {/* Contract Upload */}
-            <div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FileText size={20} className="text-[var(--mafia-red)]" />
-                Contract Upload
-              </h3>
+{/* Contract Upload */}
+<div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]">
+  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+    <FileText size={20} className="text-[var(--mafia-red)]" />
+    Contract Upload
+  </h3>
 
-              {!selectedFile ? (
-                <div className="border-2 border-dashed border-[var(--tertiary-gray-bg)] rounded-xl p-8 text-center hover:border-[var(--mafia-red)] transition-colors">
-                  <Upload size={48} className="mx-auto text-[var(--primary-gray-text)] mb-4" />
-                  <p className="text-[var(--primary-gray-text)] mb-2">Upload your contract PDF</p>
-                  <p className="text-sm text-[var(--secondary-gray-text)] mb-4">Drag and drop or click to browse</p>
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <span className="inline-flex items-center px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg hover:bg-[var(--mafia-red)]/90 transition-colors">
-                      Choose File
-                    </span>
-                  </label>
-                </div>
-              ) : (
-                <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileText size={24} className="text-[var(--mafia-red)]" />
-                      <div>
-                        <p className="font-medium text-white">{selectedFile.name}</p>
-                        <p className="text-sm text-[var(--secondary-gray-text)]">
-                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={removeFile}
-                        className="p-2 text-red-600 hover:text-red-700 transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+  {/* Show selected file if uploading new */}
+  {selectedFile ? (
+    <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileText size={24} className="text-[var(--mafia-red)]" />
+          <div>
+            <p className="font-medium text-white">{selectedFile.name}</p>
+            <p className="text-sm text-[var(--secondary-gray-text)]">
+              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={removeFile}
+            className="p-2 text-red-600 hover:text-red-700 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : 
+  /* Show existing contract file in edit mode */
+  isEditing && formData.contractFile ? (
+    <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileText size={24} className="text-[var(--mafia-red)]" />
+          <div>
+            <p className="font-medium text-white">
+              {formData.contractFile.original_filename}
+            </p>
+            <p className="text-sm text-[var(--secondary-gray-text)]">
+              {(formData.contractFile.bytes / 1024).toFixed(2)} KB
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <a 
+            href={formData.contractFile.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="p-2 text-blue-500 hover:text-blue-700 transition-colors"
+          >
+            View
+          </a>
+          <button
+            onClick={removeFile}
+            className="p-2 text-red-600 hover:text-red-700 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    /* Show upload area when no file selected */
+    <div className="border-2 border-dashed border-[var(--tertiary-gray-bg)] rounded-xl p-8 text-center hover:border-[var(--mafia-red)] transition-colors">
+      <Upload size={48} className="mx-auto text-[var(--primary-gray-text)] mb-4" />
+      <p className="text-[var(--primary-gray-text)] mb-2">Upload your contract PDF</p>
+      <p className="text-sm text-[var(--secondary-gray-text)] mb-4">Drag and drop or click to browse</p>
+      <label className="cursor-pointer">
+        <input
+          type="file"
+          accept=".pdf"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <span className="inline-flex items-center px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg hover:bg-[var(--mafia-red)]/90 transition-colors">
+          Choose File
+        </span>
+      </label>
+    </div>
+  )}
+</div>
 
+       
             {/* Submit Button */}
             <motion.button
               variants={buttonHover}
               whileHover="whileHover"
               whileTap="whileTap"
               onClick={handleSubmit}
-              disabled={isLoading || !selectedFile}
+              disabled={isLoading || (!isEditing && !selectedFile)}
               className="w-full bg-[var(--mafia-red)] text-white py-4 px-6 rounded-xl font-semibold hover:bg-[var(--mafia-red)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Submitting Deal...
+                  {isEditing ? "Updating Deal..." : "Submitting Deal..."}
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <Send size={20} />
-                  Submit Deal Package
+                  {isEditing ? "Update Deal Package" : "Submit Deal Package"}
                 </div>
               )}
             </motion.button>

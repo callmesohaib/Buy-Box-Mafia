@@ -129,15 +129,6 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
               variants={buttonHover}
               whileHover="whileHover"
               whileTap="whileTap"
-              className="flex-1 flex gap-1.5 px-2 py-1.5 text-xs text-gray-300 hover:text-amber-400 hover:bg-gray-800 rounded-md transition-colors"
-            >
-              <Bell size={14} />
-              Notifications
-            </motion.button>
-            <motion.button
-              variants={buttonHover}
-              whileHover="whileHover"
-              whileTap="whileTap"
               onClick={handleLogout}
               className="flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs text-gray-300 hover:text-red-400 hover:bg-red-900/20 rounded-md transition-colors"
             >
@@ -222,15 +213,6 @@ function Sidebar({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
                 </div>
 
                 <div className="flex gap-1.5 justify-center items-center">
-                  <motion.button
-                    variants={buttonHover}
-                    whileHover="whileHover"
-                    whileTap="whileTap"
-                    className="flex-1 flex gap-1.5 px-2 py-1.5 text-xs text-gray-300 hover:text-amber-400 hover:bg-gray-800 rounded-md transition-colors"
-                  >
-                    <Bell size={14} />
-                    <span className="text-left">Notifications</span>
-                  </motion.button>
                   <motion.button
                     variants={buttonHover}
                     whileHover="whileHover"

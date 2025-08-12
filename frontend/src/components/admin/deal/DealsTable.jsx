@@ -308,7 +308,7 @@ export default function DealsTable() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Offer Price</span>
                 <span className="font-semibold text-amber-400">
-                  {deal.offerPrice}
+                  {deal.propertyPrice || "Not specified"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">

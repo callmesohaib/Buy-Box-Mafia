@@ -121,11 +121,15 @@ export default function MyDeals() {
       setModalOpen(true);
     }
   }
-
   const handleEditDeal = (deal) => {
     navigate(`/contract/${encodeURIComponent(deal.propertyAddress)}`, {
       state: {
-        contractData: deal
+        contractData: {
+          ...deal,
+          dealId: deal.dealId // Ensure dealId is included
+        },
+        dealId: deal.dealId, // Also pass it separately
+        isEditing: true
       }
     });
   };
@@ -221,7 +225,7 @@ export default function MyDeals() {
                     <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider">Terms</h3>
                   </div>
                   <div className="space-y-3">
-                    <DetailItem label="Offer Price" value={selectedDeal.offerPrice} isPrice />
+                    <DetailItem label="Offer Price" value={selectedDeal.propertyPrice} isPrice />
                     <DetailItem label="Status" value={selectedDeal.status} />
                     <DetailItem label="Financing" value={selectedDeal.financingType || 'Not specified'} />
                   </div>
@@ -451,7 +455,7 @@ export default function MyDeals() {
                         <DollarSign size={16} className="text-[var(--mafia-red)]" />
                         <div>
                           <p className="text-xs text-[var(--secondary-gray-text)]">Price</p>
-                          <p className="text-sm font-medium text-white">{deal.offerPrice}</p>
+                          <p className="text-sm font-medium text-white">{deal.propertyPrice}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

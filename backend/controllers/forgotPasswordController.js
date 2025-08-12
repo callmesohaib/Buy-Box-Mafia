@@ -41,7 +41,6 @@ const forgotPasswordController = {
       const resetUrl = `${
         process.env.FRONTEND_URL || "http://localhost:5173"
       }/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
-      console.log(`Reset URL: ${resetUrl}`);
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,

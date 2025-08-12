@@ -111,6 +111,11 @@ function AppContent() {
               <ContractPreparation />
             </ProtectedRoute>
           } />
+          <Route path="/contract/:fullAddress/edit" element={
+  <ProtectedRoute allowedRoles={["scout"]}>
+    <ContractPreparation />
+  </ProtectedRoute>
+} />
           <Route path="/submit/:fullAddress" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <DealSubmission />

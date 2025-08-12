@@ -22,6 +22,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
     }
   }
 
+  
   // Minimalist section card style
   const sectionClass =
     "bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"
@@ -283,6 +284,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               onChange={handleInputChange}
               className={inputBase + (errors.propertyPrice ? ' border-[var(--mafia-red)] bg-[var(--mafia-red)]/10' : '')}
               placeholder="Enter offer price"
+              readOnly={!!formData.propertyPrice}
             />
             <AnimatePresence>
               {errors.propertyPrice && (

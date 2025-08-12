@@ -305,7 +305,6 @@ const updateSubadmin = async (req, res) => {
 const deleteSubadmin = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Attempting to delete user with ID:", id);
 
     // First, check if the user exists in Firestore
     const userDoc = await db.collection("users").doc(id).get();
@@ -317,15 +316,11 @@ const deleteSubadmin = async (req, res) => {
     }
 
     const userData = userDoc.data();
-    console.log("Found user data:", {
-      uid: userData.uid,
-      email: userData.email,
-    });
+
 
     // Delete from Firebase Auth using the uid from Firestore
     try {
       await admin.auth().deleteUser(userData.uid);
-      console.log("Successfully deleted user from Firebase Auth");
     } catch (authError) {
       console.error("Error deleting from Firebase Auth:", authError);
       // Continue with Firestore deletion even if Auth deletion fails
@@ -334,7 +329,6 @@ const deleteSubadmin = async (req, res) => {
 
     // Delete from Firestore
     await db.collection("users").doc(id).delete();
-    console.log("Successfully deleted user from Firestore");
 
     res.status(200).json({
       success: true,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, PenTool } from "lucide-react"
@@ -18,6 +18,12 @@ export default function ContractPreparation() {
   const location = useLocation();
   const { user } = useAuth();
   const { propertyData, clearProperty, fetchProperty, updateProperty } = useProperty();
+  const [isEditing, setIsEditing] = useState(() => {
+    const savedIsEditing = sessionStorage.getItem(`isEditing_${fullAddress}`);
+    return savedIsEditing
+      ? JSON.parse(savedIsEditing)
+      : (location.state?.isEditing || false);
+  });
 
   const query = new URLSearchParams(location.search);
   const initialStep = parseInt(query.get('step')) || 0;
@@ -25,14 +31,32 @@ export default function ContractPreparation() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [initialLoad, setInitialLoad] = useState(true);
-
+  const updateStepInUrl = (step) => {
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('step', step);
+    navigate({
+      pathname: location.pathname,
+      search: newSearchParams.toString()
+    }, { replace: true });
+  };
   useEffect(() => {
-    if (fullAddress && initialLoad) {
+    sessionStorage.setItem(`isEditing_${fullAddress}`, JSON.stringify(isEditing));
+  }, [isEditing, fullAddress]);
+  const handleStepChange = (newStep) => {
+    setCurrentStep(newStep);
+    updateStepInUrl(newStep);
+  };
+  useEffect(() => {
+    if (fullAddress && initialLoad && !isEditing) {
       const query = decodeURIComponent(fullAddress);
-      fetchProperty(query);
+      fetchProperty(query)
+        .catch(err => {
+          console.error("Failed to fetch property:", err);
+          setError("Failed to load property data");
+        });
       setInitialLoad(false);
     }
-  }, [fullAddress, fetchProperty, initialLoad]);
+  }, [fullAddress, fetchProperty, initialLoad, isEditing]);
 
   const defaultDropdowns = {
     financingType: "Cash",
@@ -41,19 +65,41 @@ export default function ContractPreparation() {
     inspectionPeriod: "7 days",
   };
 
-  const dealId = propertyData?.identifier?.attomId || '';
+
 
   const initialContractData = (location.state && location.state.contractData)
     ? { ...defaultDropdowns, ...location.state.contractData }
     : { ...defaultDropdowns };
 
   const buyerData = location.state || {};
-  const [contractData, setContractData] = useState({
-    ...initialContractData,
-    matchedBuyers: buyerData.matchedBuyers || [],
-    buyersCount: buyerData.buyersCount || 0,
-    buyerIds: buyerData.buyerIds || [],
+  const [contractData, setContractData] = useState(() => {
+    const initial = location.state?.contractData
+      ? { ...defaultDropdowns, ...location.state.contractData }
+      : { ...defaultDropdowns };
+
+    return {
+      ...initial,
+      dealId: location.state?.dealId || initial.dealId || '', // Preserve dealId
+      matchedBuyers: location.state?.matchedBuyers || [],
+      buyersCount: location.state?.buyersCount || 0,
+      buyerIds: location.state?.buyerIds || [],
+    };
   });
+  const dealId = useMemo(() => {
+    // First check location state (works for both edit and create modes)
+    if (location.state?.dealId) return location.state.dealId;
+
+    // In edit mode, check contractData if available
+    if (isEditing && contractData.dealId) return contractData.dealId;
+
+    // Fall back to property data (for create mode)
+    return propertyData?.identifier?.attomId || '';
+  }, [
+    location.state?.dealId,
+    propertyData?.identifier?.attomId,
+    isEditing,
+    contractData.dealId
+  ]);
 
   const [formData, setFormData] = useState({
     ...initialContractData,
@@ -63,9 +109,24 @@ export default function ContractPreparation() {
   });
 
   const [errors, setErrors] = useState({});
-
   useEffect(() => {
-    if (propertyData) {
+    if (location.state?.contractData) {
+      setContractData(prev => ({
+        ...prev,
+        ...location.state.contractData,
+        matchedBuyers: location.state.contractData.matchedBuyers || prev.matchedBuyers || [],
+        buyersCount: location.state.contractData.matchedBuyers?.length || 0,
+        buyerIds: location.state.contractData.buyerIds || prev.buyerIds || []
+      }));
+
+      if (location.state.isEditing) {
+        setIsEditing(true);
+        setCurrentStep(0);
+      }
+    }
+  }, [location.state?.contractData]);
+  useEffect(() => {
+    if (propertyData && !isEditing) {
       const updatedData = {
         apn: propertyData?.identifier.apn || '',
         propertyAddress: propertyData?.address.oneLine,
@@ -82,6 +143,8 @@ export default function ContractPreparation() {
         scoutEmail: user?.email || '',
         sellerName: propertyData?.sale?.sellerName || '',
         propertySize: propertyData.building?.size.bldgSize || '',
+        taxAssessedValue: propertyData?.assessment?.assessed?.assdLandValue || 'N/A',
+        annualTaxes: propertyData?.assessment?.tax?.taxAmt || 'N/A',
       };
 
       setContractData(prev => ({
@@ -94,7 +157,7 @@ export default function ContractPreparation() {
         ...updatedData
       }));
     }
-  }, [propertyData, user]);
+  }, [propertyData, user, isEditing]);
 
   useEffect(() => {
     const storedEnvelopeId = sessionStorage.getItem(`envelopeId_${fullAddress}`);
@@ -286,6 +349,9 @@ export default function ContractPreparation() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+      // Clear editing flag from session storage
+      sessionStorage.removeItem(`isEditing_${fullAddress}`);
+
       navigate(`/submit/${encodeURIComponent(fullAddress)}`, {
         state: {
           contractData: {
@@ -295,7 +361,8 @@ export default function ContractPreparation() {
             buyersCount: contractData.matchedBuyers.length || 0,
             buyerIds: contractData.buyerIds || []
           },
-          dealId
+          dealId,
+          isEditing
         }
       });
     } finally {
@@ -405,10 +472,16 @@ export default function ContractPreparation() {
             <h1 className="text-2xl font-bold text-white tracking-tight">Contract Preparation</h1>
           </div>
           <p className="text-[var(--secondary-gray-text)]">Property: {decodeURIComponent(fullAddress)}</p>
-          <p className="text-[var(--secondary-gray-text)]">Deal ID: #{dealId}</p>
+          <p className="text-[var(--secondary-gray-text)]">
+            Deal ID: {dealId ? `#${dealId}` : 'Not available'}
+          </p>
         </motion.div>
 
-        <ProgressSteps currentStep={currentStep} setCurrentStep={setCurrentStep} />
+        <ProgressSteps
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          isEditing={isEditing}
+        />
 
         <AnimatePresence mode="wait">
           <motion.div

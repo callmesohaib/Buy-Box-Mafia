@@ -191,8 +191,6 @@ exports.createEnvelope = async (req, res) => {
 
     const envelopeId = envelopeSummary.envelopeId;
 
-    // Persist envelopeId if desired (frontend handles storage). Return envelopeId only.
-    console.log(`Envelope created: ${envelopeId}`);
 
     return res.json({
       envelopeId,
@@ -266,7 +264,6 @@ exports.getSigningUrl = async (req, res) => {
     let recipients;
     try {
       recipients = await envelopesApi.listRecipients(accountId, envelopeId);
-      console.log("Recipients for envelope:", JSON.stringify(recipients, null, 2));
     } catch (listErr) {
       console.error("Error listing recipients:", {
         message: listErr?.message,
@@ -301,19 +298,13 @@ exports.getSigningUrl = async (req, res) => {
     viewRequest.userName = signer.name;
     viewRequest.clientUserId = clientUserId;
 
-    console.log("Creating recipient view with:", {
-      returnUrl: viewRequest.returnUrl,
-      email: viewRequest.email,
-      userName: viewRequest.userName,
-      clientUserId: viewRequest.clientUserId
-    });
+
 
     try {
       const results = await envelopesApi.createRecipientView(accountId, envelopeId, {
         recipientViewRequest: viewRequest
       });
 
-      console.log("DocuSign createRecipientView success:", results);
       return res.json({ envelopeId, url: results.url, status: "ready" });
     } catch (dsErr) {
       console.error("DocuSign createRecipientView error:", {

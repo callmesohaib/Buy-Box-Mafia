@@ -117,7 +117,7 @@ export default function DealDetail() {
             <DollarSign size={18} className="text-amber-400" />
             <div>
               <div className="text-gray-400 text-xs">Offer Price</div>
-              <div className="font-semibold text-white">{deal.offerPrice || 'Not specified'}</div>
+              <div className="font-semibold text-white">{deal.propertyPrice || 'Not specified'}</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
