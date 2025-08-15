@@ -76,6 +76,9 @@ export default function BuyersPanel() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBuyer, setSelectedBuyer] = useState(null);
   const { user } = useAuth();
+  const [submittedByFilter, setSubmittedByFilter] = useState("");
+  const submittedByOptions = Array.from(new Set(buyers.map(b => b.submittedByName || "N/A")));
+
 
   const userRole = user?.role || 'guest';
 
@@ -117,11 +120,17 @@ export default function BuyersPanel() {
     return 0;
   });
 
-  const filteredBuyers = sortedBuyers.filter(buyer =>
-    buyer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    buyer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    buyer.phone.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBuyers = sortedBuyers.filter(buyer => {
+    const matchesSearch =
+      buyer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      buyer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      buyer.phone.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesSubmittedBy =
+      submittedByFilter === "" || buyer.submittedByName === submittedByFilter;
+
+    return matchesSearch && matchesSubmittedBy;
+  });
 
   const navigate = useNavigate();
 
@@ -264,7 +273,8 @@ export default function BuyersPanel() {
         </div>
       )}
       {/* Header and Controls */}
-      <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-2 items-start sm:items-center">
+        {/* Search */}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
           <input
@@ -276,33 +286,21 @@ export default function BuyersPanel() {
           />
         </div>
 
-        {userRole === 'subadmin' && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/subadmin/buyer/new_buyer')}
-              className="px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg font-semibold shadow hover:bg-[var(--mafia-red-hover)] transition-colors flex items-center justify-center gap-2"
-            >
-              <span>+</span>
-              <span className="hidden md:inline">Add Buyer</span>
-            </button>
-            <button
-              onClick={handleImportClick}
-              disabled={importing}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <Upload size={16} />
-              <span className="hidden md:inline">{importing ? "Importing..." : "Import"}</span>
-            </button>
-            <input
-              type="file"
-              accept=".csv"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-          </div>
-        )}
+        {/* Submitted By Filter */}
+        <select
+          value={submittedByFilter}
+          onChange={(e) => setSubmittedByFilter(e.target.value)}
+          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        >
+          <option value="">All Submitters</option>
+          {submittedByOptions.map((name, i) => (
+            <option key={i} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
       </div>
+
 
       {importError && (
         <div className="text-center text-red-400 font-medium mb-4">{importError}</div>
