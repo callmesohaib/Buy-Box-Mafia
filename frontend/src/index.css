@@ -58,3 +58,18 @@ button {
   scrollbar-width: thin;
   scrollbar-color: rgb(64, 64, 67) var(--black);
 }
+.scout-details-modal .ant-modal-close {
+  color: white;
+}
+
+.scout-details-modal .ant-modal-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.scout-details-modal .ant-modal-title {
+  color: white;
+  font-weight: bold;
+  padding: 1rem;
+  font-size: 1.3rem;
+  text-align: center;
+}

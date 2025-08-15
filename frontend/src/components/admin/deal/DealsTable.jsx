@@ -17,9 +17,13 @@ import {
   Users,
   X,
   Loader2,
+  Phone,
+  Mail,
+  User,
 } from "lucide-react";
 import { pageVariants, pageTransition } from "../../../animations/animation";
 import { getDeals, updateDeal } from "../../../services/dealsService";
+import { Modal } from "antd"; // Import Ant Design Modal
 
 const statusColors = {
   pending: "bg-amber-400/20 text-amber-400 border-amber-400/30",
@@ -57,6 +61,9 @@ export default function DealsTable() {
   const [error, setError] = useState(null);
   const [updatingDeals, setUpdatingDeals] = useState({});
   const [errorMessages, setErrorMessages] = useState({});
+  const [isScoutModalVisible, setIsScoutModalVisible] = useState(false);
+  const [selectedScout, setSelectedScout] = useState(null);
+
 
   // Unique filter options
   const statuses = Array.from(new Set(dealList.map((d) => d.status)));
@@ -148,6 +155,19 @@ export default function DealsTable() {
 
   const handleViewDeal = (id) => {
     navigate(`/admin/deals/${id}/view`);
+  };
+  const showScoutModal = (scoutData) => {
+    setSelectedScout({
+      name: scoutData.scoutName || scoutData.submittedByName || "Unknown",
+      phone: scoutData.scoutPhone || "Not available",
+      email: scoutData.scoutEmail || "Not available"
+    });
+    setIsScoutModalVisible(true);
+  };
+
+  const handleScoutModalCancel = () => {
+    setIsScoutModalVisible(false);
+    setSelectedScout(null);
   };
 
   useEffect(() => {
@@ -324,9 +344,15 @@ export default function DealsTable() {
                 </span>
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-400 mb-4">
+            <div className="flex justify-between items-center text-gray-400 mb-4">
               <span className="mr-2">
                 👤 Scout: {deal.scoutName || deal.submittedByName || "Unknown"}
+              </span>
+              <span
+                onClick={() => showScoutModal(deal)}
+                className="cursor-pointer hover:text-[var(--mafia-red)] transition-colors"
+              >
+                <Eye size={16} />
               </span>
             </div>
             {/* Status dropdown */}
@@ -416,6 +442,57 @@ export default function DealsTable() {
           </div>
         )}
       </div>
+      <Modal
+        title="Scout Details"
+        open={isScoutModalVisible}
+        onCancel={handleScoutModalCancel}
+        footer={null}
+        centered
+        className="scout-details-modal"
+        styles={{
+          content: {
+            backgroundColor: 'var(--from-bg)',
+            color: 'white',
+            padding: 0,
+          },
+          header: {
+            backgroundColor: 'var(--from-bg)',
+            color: 'white',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          },
+          body: {
+            padding: '24px',
+          }
+        }}
+      >
+        {selectedScout && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <User className="text-blue-400" size={20} />
+              <div>
+                <p className="text-sm text-gray-300">Name</p>
+                <p className="font-medium text-white">{selectedScout.name}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Phone className="text-green-400" size={20} />
+              <div>
+                <p className="text-sm text-gray-300">Phone</p>
+                <p className="font-medium text-white">{selectedScout.phone}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Mail className="text-amber-400" size={20} />
+              <div>
+                <p className="text-sm text-gray-300">Email</p>
+                <p className="font-medium text-white">{selectedScout.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 }
