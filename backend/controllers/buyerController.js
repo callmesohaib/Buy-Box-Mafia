@@ -25,7 +25,7 @@ toFirestoreBuyer = (body) => ({
 exports.addBuyer = async (req, res) => {
   try {
     const buyer = toFirestoreBuyer(req.body);
-    buyer.submittedBy = req.body.submittedBy || 'Unknown';
+    buyer.submittedBy = req.body.submittedBy || "Unknown";
     const docRef = await db.collection("buyers").add(buyer);
     res
       .status(201)
@@ -38,28 +38,37 @@ exports.addBuyer = async (req, res) => {
 exports.getBuyers = async (req, res) => {
   try {
     const buyersSnapshot = await db.collection("buyers").get();
-    const buyers = buyersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const buyers = buyersSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     // Get all unique user IDs from submittedBy fields
-    const userIds = [...new Set(buyers.map(buyer => buyer.submittedBy).filter(Boolean))];
+    const userIds = [
+      ...new Set(buyers.map((buyer) => buyer.submittedBy).filter(Boolean)),
+    ];
 
     // Batch fetch all user documents in one query
-    const usersSnapshot = userIds.length > 0 
-      ? await db.collection("users")
-          .where(admin.firestore.FieldPath.documentId(), 'in', userIds)
-          .get()
-      : { docs: [] };
+    const usersSnapshot =
+      userIds.length > 0
+        ? await db
+            .collection("users")
+            .where(admin.firestore.FieldPath.documentId(), "in", userIds)
+            .get()
+        : { docs: [] };
 
     // Create a map of user IDs to names
     const usersMap = {};
-    usersSnapshot.forEach(doc => {
-      usersMap[doc.id] = doc.data().name || 'Unknown';
+    usersSnapshot.forEach((doc) => {
+      usersMap[doc.id] = doc.data().name || "Unknown";
     });
 
     // Enhance buyers data with submitter names
-    const buyersWithNames = buyers.map(buyer => ({
+    const buyersWithNames = buyers.map((buyer) => ({
       ...buyer,
-      submittedByName: buyer.submittedBy ? usersMap[buyer.submittedBy] : 'Unknown'
+      submittedByName: buyer.submittedBy
+        ? usersMap[buyer.submittedBy]
+        : "Unknown",
     }));
 
     res.status(200).json(buyersWithNames);
@@ -81,7 +90,7 @@ exports.importBuyers = async (req, res) => {
     buyers.forEach((b) => {
       const ref = db.collection("buyers").doc();
       const buyerData = toFirestoreBuyer(b);
-      buyerData.submittedBy = b.submittedBy || 'Unknown';
+      buyerData.submittedBy = b.submittedBy || "Unknown";
       batch.set(ref, buyerData);
     });
     await batch.commit();
@@ -108,7 +117,7 @@ exports.updateBuyer = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     updateData.updatedAt = new Date();
-    if (!updateData.submittedBy) updateData.submittedBy = 'Unknown';
+    if (!updateData.submittedBy) updateData.submittedBy = "Unknown";
     await db.collection("buyers").doc(id).update(updateData);
     res.status(200).json({ success: true, message: "Buyer updated" });
   } catch (error) {
@@ -116,3 +125,27 @@ exports.updateBuyer = async (req, res) => {
   }
 };
 
+exports.getTotalBuyersBySubmittedBy = async (req, res) => {
+  try {
+    const buyersSnapshot = await db.collection("buyers").get();
+    const buyers = buyersSnapshot.docs.map((doc) => doc.data());
+
+    // Count buyers by submittedBy field
+    const counts = {};
+    buyers.forEach((buyer) => {
+      const submitter = buyer.submittedBy;
+      counts[submitter] = (counts[submitter] || 0) + 1;
+    });
+
+    // Convert counts object to an array of { submittedBy, count }
+    const result = Object.entries(counts).map(([submittedBy, count]) => ({
+      submittedBy,
+      count,
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching total buyers by submittedBy:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

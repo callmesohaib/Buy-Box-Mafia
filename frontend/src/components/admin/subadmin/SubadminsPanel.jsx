@@ -24,34 +24,29 @@ export default function SubadminsPanel() {
     const navigate = useNavigate();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedSubadmin, setSelectedSubadmin] = useState(null);
+    const [buyersCountMap, setBuyersCountMap] = useState({}); // Added state for buyers count map
 
     function formatDate(date) {
         if (!date) return 'Unknown';
 
-        // If it's already a formatted string like "Jul 19, 2025", return it as is
         if (typeof date === 'string' && /^[A-Za-z]{3}\s\d{1,2},\s\d{4}$/.test(date)) {
             return date;
         }
 
         let dateToFormat = date;
 
-        // If Firestore Timestamp (has toDate method)
         if (date && typeof date.toDate === 'function') {
             dateToFormat = date.toDate();
         }
-        // If it's a Firestore Timestamp object with _seconds and _nanoseconds
         else if (date && typeof date === 'object' && date._seconds !== undefined) {
             dateToFormat = new Date(date._seconds * 1000);
         }
-        // If it's already a Date object
         else if (date instanceof Date) {
             dateToFormat = date;
         }
-        // If it's a timestamp number
         else if (typeof date === 'number') {
             dateToFormat = new Date(date);
         }
-        // If it's a string, try to parse it
         else if (typeof date === 'string') {
             dateToFormat = new Date(date);
         }
@@ -72,16 +67,46 @@ export default function SubadminsPanel() {
         try {
             setLoading(true);
             setError("");
+
+            // 1. Fetch all subadmins
             const response = await subadminService.getAllSubadmins();
+
             if (response.success) {
-                setUsers(response.data);
-                // Filter to only show subadmins
-                const subadminUsers = response.data.filter(user => user.role === 'subadmin');
-                setSubadmins(subadminUsers);
+                const allUsers = response.data;
+                const subadminUsers = allUsers.filter(user => user.role === "subadmin");
+
+                // 2. Fetch buyers count per subadmin
+                const res = await fetch("http://localhost:3001/api/buyers/total-buyers-by-subadmin", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                const buyersData = await res.json();
+
+                // Create map: { subadminId: count }
+                const newBuyersCountMap = {};
+                buyersData.forEach(buyer => {
+                    newBuyersCountMap[buyer.submittedBy] = buyer.count;
+                });
+
+                setBuyersCountMap(newBuyersCountMap); // Store the map in state
+
+                // 3. Merge buyersCount into subadmins
+                const subadminsWithBuyers = subadminUsers.map(sub => ({
+                    ...sub,
+                    buyersCount: newBuyersCountMap[sub.uid] || 0, // Use uid to match with submittedBy
+                }));
+
+                // 4. Update state
+                setUsers(allUsers);
+                setSubadmins(subadminsWithBuyers);
             } else {
                 setError(response.message || "Failed to fetch subadmins");
             }
         } catch (error) {
+            console.error("Error fetching subadmins:", error);
             setError(error.message || "Failed to fetch subadmins");
         } finally {
             setLoading(false);
@@ -126,8 +151,8 @@ export default function SubadminsPanel() {
     };
 
     const handleEdit = (subadmin) => {
-        navigate(`/admin/subadmin/edit/${subadmin.uid}`, { 
-            state: { subadminData: subadmin } 
+        navigate(`/admin/subadmin/edit/${subadmin.uid}`, {
+            state: { subadminData: subadmin }
         });
     };
 
@@ -240,7 +265,7 @@ export default function SubadminsPanel() {
                                     <p className="text-xs text-gray-400 mt-0.5">{subadmin.location}</p>
                                 </div>
                             </div>
-                            
+
                             {/* Role Badge */}
                             <div className="flex items-center gap-2">
                                 <Shield size={16} className="text-blue-400" />
@@ -251,7 +276,7 @@ export default function SubadminsPanel() {
 
                             {/* Divider */}
                             <div className="border-t border-gray-700 my-2" />
-                            
+
                             {/* Contact Info */}
                             <div className="flex flex-col gap-2 mb-2">
                                 <div className="flex items-center gap-2 text-sm text-gray-300">
@@ -270,8 +295,12 @@ export default function SubadminsPanel() {
                                     <UserCheck size={16} className="text-blue-400" />
                                     <span>Status: {subadmin.status || 'Active'}</span>
                                 </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-300">
+                                    <Users size={16} className="text-purple-400" />
+                                    <span>Total Buyers: {subadmin.buyersCount ?? 0}</span>
+                                </div>
                             </div>
-                            
+
                             {/* Actions */}
                             <div className="flex gap-2 pt-2 border-t border-gray-700 mt-2">
                                 <motion.button
