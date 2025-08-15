@@ -15,6 +15,7 @@ export default function Navbar() {
 
   const navItems = [
     { path: "/property-search", label: "Property Search", show: true },
+    { path: "/about", label: "About Us", show: true },
     { path: "/deals", label: "My Deals", show: true },
     { path: "/logout", label: "Logout", show: isAuthenticated, isButton: true },
   ];

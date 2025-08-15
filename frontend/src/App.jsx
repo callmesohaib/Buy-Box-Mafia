@@ -22,6 +22,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./store/AuthContext";
+import About from "./pages/About";
 import './index.css';
 
 function ScrollToTop() {
@@ -91,6 +92,11 @@ function AppContent() {
       <main className={`flex-1 ${!isAdminPage ? "pt-16" : ""}`}>
         <ScrollToTop />
         <Routes>
+          <Route path="/about" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <About />
+            </ProtectedRoute>
+          } />
           <Route path="/property-search" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <PropertySearch />
@@ -112,10 +118,10 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/contract/:fullAddress/edit" element={
-  <ProtectedRoute allowedRoles={["scout"]}>
-    <ContractPreparation />
-  </ProtectedRoute>
-} />
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <ContractPreparation />
+            </ProtectedRoute>
+          } />
           <Route path="/submit/:fullAddress" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <DealSubmission />
