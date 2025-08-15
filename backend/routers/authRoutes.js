@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { errorHandler } = require('../middlewares/authmiddleware');
+const { errorHandler } = require('../middlewares/authMiddleware');
 const { ROLES } = require('../utils/constants');
 
 // Unified login route for all roles

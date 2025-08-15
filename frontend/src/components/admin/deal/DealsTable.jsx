@@ -360,6 +360,7 @@ export default function DealsTable() {
               </div>
             )}
             {/* Actions */}
+
             <div className="flex justify-between items-center gap-2 mt-auto pt-2">
               <button
                 onClick={() => handleViewDeal(deal.id)}
@@ -375,31 +376,38 @@ export default function DealsTable() {
               >
                 <Users size={20} />
               </Link>
-              <button
-                onClick={() => handleApprove(deal.id)}
-                title="Approve"
-                className="p-2 rounded-full hover:bg-green-600/20 text-green-400 transition-colors"
-                disabled={updatingDeals[deal.id]}
-              >
-                {updatingDeals[deal.id] ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={20} />
-                )}
-              </button>
-              <button
-                onClick={() => handleReject(deal.id)}
-                title="Reject"
-                className="p-2 rounded-full hover:bg-red-600/20 text-red-400 transition-colors"
-                disabled={updatingDeals[deal.id]}
-              >
-                {updatingDeals[deal.id] ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : (
-                  <X size={20} />
-                )}
-              </button>
+
+              {deal.status !== "Approved" && deal.status !== "Rejected" && (
+                <>
+                  <button
+                    onClick={() => handleApprove(deal.id)}
+                    title="Approve"
+                    className="p-2 rounded-full hover:bg-green-600/20 text-green-400 transition-colors"
+                    disabled={updatingDeals[deal.id]}
+                  >
+                    {updatingDeals[deal.id] ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <CheckCircle size={20} />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleReject(deal.id)}
+                    title="Reject"
+                    className="p-2 rounded-full hover:bg-red-600/20 text-red-400 transition-colors"
+                    disabled={updatingDeals[deal.id]}
+                  >
+                    {updatingDeals[deal.id] ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <X size={20} />
+                    )}
+                  </button>
+                </>
+              )}
             </div>
+
           </div>
         ))}
         {filtered.length === 0 && (

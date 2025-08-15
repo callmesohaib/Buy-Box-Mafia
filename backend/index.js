@@ -3,7 +3,7 @@ const express = require("express");
 const docusignRoutes = require("./routers/docusignRoutes");
 const cors = require("cors");
 const path = require("path");
-const authRoutes = require("./routers/authroutes");
+const authRoutes = require("./routers/authRoutes");
 const forgotPasswordRoutes = require("./routers/forgotPasswordRoutes");
 const subadminRoutes = require("./routers/subadminRoutes");
 const buyerRoutes = require("./routers/buyerRoutes");
@@ -11,7 +11,6 @@ const dealsRoutes = require("./routers/dealsRoutes");
 const { admin } = require("./utils/firebase");
 const scoutRoutes = require("./routers/scoutRoutes");
 const uploadRoutes = require("./routers/uploadRoutes");
-
 
 // Initialize Firebase
 require("./utils/firebase");
