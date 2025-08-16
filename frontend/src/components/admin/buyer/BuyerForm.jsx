@@ -177,31 +177,74 @@ export default function BuyerForm({ onClose }) {
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-                <input name="name" value={form.name} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter buyer's full name"
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-                  <input name="email" value={form.email} onChange={handleChange} type="email" required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    type="email"
+                    required
+                    placeholder="example@email.com"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
-                  <input name="phone" value={form.phone} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    required
+                    placeholder="+1 (123) 456-7890"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
-                  <input name="city" value={form.city} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g. New York"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>
-                  <input name="country" value={form.country} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="country"
+                    value={form.country}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g. United States"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Buying Locations</label>
-                <input name="buyingLocations" value={form.buyingLocations} onChange={handleChange} required className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <input
+                  name="buyingLocations"
+                  value={form.buyingLocations}
+                  onChange={handleChange}
+                  required
+                  placeholder="Location 1 / Location 2 / Location 3"
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
             </div>
           )}
@@ -210,20 +253,50 @@ export default function BuyerForm({ onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Lot Size Min (acres)</label>
-                  <input name="lotSizeMin" value={form.lotSizeMin} onChange={handleChange} type="number" min="0" step="any" className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="lotSizeMin"
+                    value={form.lotSizeMin}
+                    onChange={handleChange}
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Minimum lot size in acres"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Lot Size Max (acres)</label>
-                  <input name="lotSizeMax" value={form.lotSizeMax} onChange={handleChange} type="number" min="0" step="any" className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="lotSizeMax"
+                    value={form.lotSizeMax}
+                    onChange={handleChange}
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Maximum lot size in acres"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Price per acre or per lot</label>
-                <input name="pricePer" value={form.pricePer} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <input
+                  name="pricePer"
+                  value={form.pricePer}
+                  onChange={handleChange}
+                  placeholder="e.g. $10,000 per acre or $500,000 per lot"
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Zoning Types Accepted</label>
-                <input name="zoningTypes" value={form.zoningTypes} onChange={handleChange} placeholder="Residential, Agricultural, Commercial, etc." className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <input
+                  name="zoningTypes"
+                  value={form.zoningTypes}
+                  onChange={handleChange}
+                  placeholder="Residential, Agricultural, Commercial, etc."
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
             </div>
           )}
@@ -232,29 +305,50 @@ export default function BuyerForm({ onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Must be cleared?</label>
-                  <select name="mustBeCleared" value={form.mustBeCleared} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent">
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                  <select
+                    name="mustBeCleared"
+                    value={form.mustBeCleared}
+                    onChange={handleChange}
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  >
+                    <option value="yes">Yes - Land must be cleared</option>
+                    <option value="no">No - Can be uncleared</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Access Requirements (Must have road access?)</label>
-                  <select name="accessRequired" value={form.accessRequired} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent">
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Access Requirements</label>
+                  <select
+                    name="accessRequired"
+                    value={form.accessRequired}
+                    onChange={handleChange}
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  >
+                    <option value="yes">Yes - Must have road access</option>
+                    <option value="no">No - No road access required</option>
                   </select>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Utilities Needed / Preferences</label>
-                <input name="utilities" value={form.utilities} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <input
+                  name="utilities"
+                  value={form.utilities}
+                  onChange={handleChange}
+                  placeholder="e.g. Electricity, Water, Sewer, etc."
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Buy On Market?</label>
-                  <select name="buyOnMarket" value={form.buyOnMarket} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent">
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                  <select
+                    name="buyOnMarket"
+                    value={form.buyOnMarket}
+                    onChange={handleChange}
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  >
+                    <option value="yes">Yes - Will buy listed properties</option>
+                    <option value="no">No - Only off-market deals</option>
                   </select>
                 </div>
               </div>
@@ -265,16 +359,40 @@ export default function BuyerForm({ onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Min Purchase Budget</label>
-                  <input name="budgetMin" value={form.budgetMin} onChange={handleChange} type="number" min="0" step="any" className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="budgetMin"
+                    value={form.budgetMin}
+                    onChange={handleChange}
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Minimum budget amount"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Max Purchase Budget</label>
-                  <input name="budgetMax" value={form.budgetMax} onChange={handleChange} type="number" min="0" step="any" className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                  <input
+                    name="budgetMax"
+                    value={form.budgetMax}
+                    onChange={handleChange}
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Maximum budget amount"
+                    className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Timeline to Close / Speed Preference</label>
-                <input name="timeline" value={form.timeline} onChange={handleChange} className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
+                <label className="block text-sm font-medium text-gray-300 mb-1">Timeline to Close</label>
+                <input
+                  name="timeline"
+                  value={form.timeline}
+                  onChange={handleChange}
+                  placeholder="e.g. Within 30 days, Flexible, etc."
+                  className="w-full border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
               </div>
             </div>
           )}

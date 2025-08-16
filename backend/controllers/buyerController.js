@@ -38,6 +38,9 @@ exports.addBuyer = async (req, res) => {
 exports.getBuyers = async (req, res) => {
   try {
     const buyersSnapshot = await db.collection("buyers").get();
+    if (buyersSnapshot.empty) {
+  return res.status(200).json([]); 
+}
     const buyers = buyersSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),

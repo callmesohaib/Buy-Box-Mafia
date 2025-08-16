@@ -10,15 +10,6 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-/*
-  Changes in this version:
-  - Removed any mention or display of active user counts.
-  - Country tooltip/popup now only shows the country name.
-  - Clicking a country toggles display of its counties (no counts).
-  - County tooltip shows only county name; hovering a county shows a soft highlight ring.
-  - Fixed styling so no white boxes appear while tiles load.
-*/
-
 const activeCountries = {
     US: {
         name: "United States",

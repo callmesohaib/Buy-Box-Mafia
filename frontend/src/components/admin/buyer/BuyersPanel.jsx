@@ -5,6 +5,7 @@ import {
   Upload,
   ChevronDown,
   ChevronUp,
+  Plus,
   Search,
   Eye
 } from "lucide-react";
@@ -68,6 +69,7 @@ function formatDate(date) {
 
 export default function BuyersPanel() {
   const [buyers, setBuyers] = useState([]);
+  const [noBuyers, setNoBuyers] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -84,14 +86,37 @@ export default function BuyersPanel() {
 
   const fetchBuyers = async () => {
     setLoading(true);
-    const response = await fetch("http://localhost:3001/api/buyers");
-    const data = await response.json();
-    setBuyers(data);
-    setLoading(false);
-    if (userRole === 'subadmin') {
-      setBuyers(data.filter(buyer => buyer.submittedBy === user.id));
-    }
+    try {
+      const response = await fetch("http://localhost:3001/api/buyers");
 
+      if (!response.ok) {
+        if (response.status === 404) {
+          setNoBuyers(true); // Set no buyers state
+        } else {
+          throw new Error("Server error");
+        }
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.length === 0) {
+        setNoBuyers(true); // Set no buyers state
+      } else {
+        setBuyers(data);
+        setNoBuyers(false); // Reset state if we have buyers
+      }
+
+      if (userRole === 'subadmin') {
+        setBuyers(data.filter(buyer => buyer.submittedBy === user.id));
+      }
+    } catch (error) {
+      console.error("Error fetching buyers:", error);
+      toast.error("Failed to load buyers");
+      setNoBuyers(true); // Set no buyers state on error
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -217,6 +242,47 @@ export default function BuyersPanel() {
       }
     });
   };
+  if (noBuyers) {
+    return (
+      <motion.div
+        className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 rounded-xl p-6 text-center"
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+      >
+        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 max-w-md">
+          <div className="text-2xl font-bold text-white mb-2">No Buyers Found</div>
+          <p className="text-gray-400 mb-6">
+            {searchTerm
+              ? "No buyers match your search criteria."
+              : "You haven't added any buyers yet."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {searchTerm ? (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Clear Search
+              </button>
+            ) : null}
+
+            {(userRole === 'subadmin' || userRole === 'admin') && (
+              <button
+                onClick={() => navigate('/subadmin/buyer/new_buyer')}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={18} />
+                Add New Buyer
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
 
   if (loading) {
     return (
@@ -287,24 +353,55 @@ export default function BuyersPanel() {
         </div>
 
         {/* Submitted By Filter */}
-        <select
-          value={submittedByFilter}
-          onChange={(e) => setSubmittedByFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-        >
-          <option value="">All Submitters</option>
-          {submittedByOptions.map((name, i) => (
-            <option key={i} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+        {userRole === 'admin' && (
+          <select
+            value={submittedByFilter}
+            onChange={(e) => setSubmittedByFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          >
+            <option value="">All Submitters</option>
+            {submittedByOptions.map((name, i) => (
+              <option key={i} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        )}
+        {userRole === 'subadmin' && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/subadmin/buyer/new_buyer')}
+              className="px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg font-semibold shadow hover:bg-[var(--mafia-red-hover)] transition-colors flex items-center justify-center gap-2"
+            >
+              <span>+</span>
+              <span className="hidden md:inline">Add Buyer</span>
+            </button>
+            <button
+              onClick={handleImportClick}
+              disabled={importing}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <Upload size={16} />
+              <span className="hidden md:inline">{importing ? "Importing..." : "Import"}</span>
+            </button>
+            <input
+              type="file"
+              accept=".csv"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+          </div>
+        )}
       </div>
 
 
-      {importError && (
-        <div className="text-center text-red-400 font-medium mb-4">{importError}</div>
-      )}
+
+      {
+        importError && (
+          <div className="text-center text-red-400 font-medium mb-4">{importError}</div>
+        )
+      }
 
       {/* Table for md+ */}
       <div className="overflow-x-auto rounded-lg  border border-gray-700 hidden md:block" >
@@ -438,14 +535,16 @@ export default function BuyersPanel() {
         ))}
       </div>
       {/* Empty State */}
-      {filteredBuyers.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-400 mb-2">No buyers found</div>
-          {searchTerm && (
-            <button onClick={() => setSearchTerm("")} className="text-amber-400 hover:underline">Clear search</button>
-          )}
-        </div>
-      )}
-    </motion.div>
+      {
+        filteredBuyers.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-2">No buyers found</div>
+            {searchTerm && (
+              <button onClick={() => setSearchTerm("")} className="text-amber-400 hover:underline">Clear search</button>
+            )}
+          </div>
+        )
+      }
+    </motion.div >
   );
 }
