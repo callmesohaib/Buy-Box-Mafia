@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, propEffect } from "framer-motion";
 import { useAuth } from "../store/AuthContext";
 import { ChevronLeft, Upload, FileText, MapPin, User, AlertCircle, CheckCircle, X, Send, Users } from "lucide-react";
 import { addDeal, updateDeal } from "../services/dealsService";
@@ -26,6 +26,84 @@ export default function DealSubmission() {
   const [buyersError, setBuyersError] = useState(null);
   const isEditing = location.state?.isEditing || false;
   const dealId = location.state?.dealId;
+
+  // Location matching function
+  function isLocationMatch(locations, property) {
+
+    const target = property.propertyAddress?.toLowerCase();
+
+    if (!target) return false;
+
+    // Split target into words
+    const targetWords = target.split(/[\s,]+/).filter(Boolean);
+
+    return locations.some(loc => {
+      // Split by slash into multiple possible addresses
+      const parts = loc.split("/").map(p => p.trim().toLowerCase());
+
+      return parts.some(part => {
+        const partWords = part.split(/[\s,]+/).filter(Boolean);
+
+        // Count matching words
+        let matches = 0;
+        for (const word of partWords) {
+          if (targetWords.includes(word)) matches++;
+        }
+
+        // Decide threshold (e.g., 60% words must match)
+        const matchRatio = matches / partWords.length;
+        return matchRatio >= 0.6; // tweak ratio as needed
+      });
+    });
+  }
+
+  // Buyer matching function
+  const calculateBuyerMatch = useCallback((property, buyer) => {
+    console.log("Calculating match for buyer:", buyer.name, "with property:", property);
+    if (!property || !buyer) return 0;
+
+    let score = 0, total = 0;
+    const zoning = Array.isArray(buyer.zoningTypes)
+      ? buyer.zoningTypes
+      : buyer.zoningTypes ? [buyer.zoningTypes] : [];
+
+    const locations = Array.isArray(buyer.buyingLocations)
+      ? buyer.buyingLocations
+      : buyer.buyingLocations ? [buyer.buyingLocations] : [];
+
+    // City match
+    total++;
+    if (property.propertyCity.toLowerCase() === buyer.city?.toLowerCase()) score++;
+
+    // Country match
+    total++;
+    if (property.propertyCountry.toLowerCase() === buyer.country?.toLowerCase()) score++;
+
+    // Class match
+    total++;
+    if (zoning.some(z => z?.toLowerCase() === property.propertyZoning?.toLowerCase())) score++;
+
+    // Locations match
+    total++;
+    if (isLocationMatch(locations, property)) score++;
+
+    // Budget match
+    total++;
+
+    const price = Number(property.propertyPrice);
+    const min = Number(buyer.budgetMin);
+    const max = Number(buyer.budgetMax);
+
+    if (!isNaN(price)) {
+      if (!isNaN(min) && !isNaN(max) && price >= min && price <= max) score++;
+      else if (!isNaN(min) && isNaN(max) && price >= min) score++;
+      else if (isNaN(min) && !isNaN(max) && price <= max) score++;
+    }
+    console.log("Budget match score:", score);
+
+    return Math.round((score / total) * 100);
+  }, []);
+
   const initialFormData = location.state?.contractData
     ? {
       ...location.state.contractData,
@@ -42,6 +120,12 @@ export default function DealSubmission() {
         propertyData?.assessment?.tax?.taxAmt || 'N/A',
       propertyType: location.state?.contractData?.propertyType ||
         propertyData?.summary?.propClass || 'N/A',
+      propertyData: location.state?.contractData?.propertyData || {
+        address: propertyData?.address,
+        lot: propertyData?.lot,
+        assessment: propertyData?.assessment,
+        summary: propertyData?.summary
+      }
     }
     : {
       status: "pending",
@@ -50,112 +134,18 @@ export default function DealSubmission() {
       matchedBuyers: [],
       buyersCount: 0,
       buyerIds: [],
-      propertyType: propertyData?.summary?.propClass || 'N/A'
+      propertyType: propertyData?.summary?.propClass || 'N/A',
+      propertyData: {
+        address: propertyData?.address,
+        lot: propertyData?.lot,
+        assessment: propertyData?.assessment,
+        summary: propertyData?.summary
+      }
     };
-  const calculateBuyerMatch = useCallback((property, buyer) => {
-    if (!property || !buyer) return 0;
 
-    let score = 0, total = 0;
-    const zoning = Array.isArray(buyer.zoningTypes) ?
-      buyer.zoningTypes :
-      buyer.zoningTypes ? [buyer.zoningTypes] : [];
-
-    const locations = Array.isArray(buyer.buyingLocations) ?
-      buyer.buyingLocations :
-      buyer.buyingLocations ? [buyer.buyingLocations] : [];
-
-    // 1. City match
-    total++;
-    if (property.propertyCity?.toLowerCase() === buyer.city?.toLowerCase()) {
-      score++;
-    }
-
-    // 2. Country match
-    total++;
-    if (property.propertyCountry?.toLowerCase() === buyer.country?.toLowerCase()) {
-      score++;
-    }
-
-    // 3. Property type match
-    total++;
-    if (zoning.some(z => z?.toLowerCase() === property.propertyType?.toLowerCase())) {
-      score++;
-    }
-
-    // 4. Locations match
-    total++;
-    if (locations.some(l => l?.toLowerCase() === property.propertyCity?.toLowerCase())) {
-      score++;
-    }
-
-    // 5. Budget match
-    total++;
-    const price = Number(property.propertyPrice);
-    const min = Number(buyer.budgetMin);
-    const max = Number(buyer.budgetMax);
-
-    if (!isNaN(price)) {
-      if (!isNaN(min) && !isNaN(max) && price >= min && price <= max) {
-        score++;
-      }
-      else if (!isNaN(min) && isNaN(max) && price >= min) {
-        score++;
-      }
-      else if (isNaN(min) && !isNaN(max) && price <= max) {
-        score++;
-      }
-    }
-
-    const matchPercent = Math.round((score / total) * 100);
-    return matchPercent;
-  }, []);
-  useEffect(() => {
-    if (initialFormData && !buyersLoading && !buyersError) {
-      const fetchAndMatchBuyers = async () => {
-        setBuyersLoading(true);
-        setBuyersError(null);
-
-        try {
-          const response = await fetch("http://localhost:3001/api/buyers");
-          if (!response.ok) throw new Error("Failed to fetch buyers");
-
-          const buyers = await response.json();
-
-          // Create a property object that matches what calculateBuyerMatch expects
-          const propertyForMatching = {
-            propertyCity: propertyData?.address?.locality,
-            propertyCountry: propertyData?.address?.country,
-            propertyType: propertyData?.summary?.propClass,
-            propertyPrice: propertyData?.assessment?.assessed?.assdTtlValue
-          };
-
-          const matches = buyers
-            .map(buyer => ({
-              ...buyer,
-              matchPercent: calculateBuyerMatch(initialFormData, buyer)
-            }))
-            .filter(b => b.matchPercent > 0)
-            .sort((a, b) => b.matchPercent - a.matchPercent);
-
-
-          setFormData(prev => ({
-            ...prev,
-            matchedBuyers: matches,
-            buyersCount: matches.length,
-            buyerIds: matches.map(b => b.id)
-          }));
-        } catch (err) {
-          console.error("Buyer fetch/match error:", err);
-          setBuyersError(err.message);
-        } finally {
-          setBuyersLoading(false);
-        }
-      };
-
-      fetchAndMatchBuyers();
-    }
-  }, [propertyData, calculateBuyerMatch]);
   const [formData, setFormData] = useState(initialFormData);
+
+  // Fetch property data and match buyers
   useEffect(() => {
     let isMounted = true;
     setIsLoadingData(true);
@@ -167,6 +157,15 @@ export default function DealSubmission() {
           const data = await fetchProperty(query);
           if (isMounted) {
             setLocalPropertyData(data);
+            setFormData(prev => ({
+              ...prev,
+              propertyData: {
+                address: data?.address,
+                lot: data?.lot,
+                assessment: data?.assessment,
+                summary: data?.summary
+              }
+            }));
           }
         } catch (err) {
           console.error("Error fetching property:", err);
@@ -194,9 +193,48 @@ export default function DealSubmission() {
     };
   }, [fullAddress, location.state?.contractData]);
 
+  // Match buyers when property data is available
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Skip if we're editing and already have matched buyers
+    if (isEditing && formData.matchedBuyers && formData.matchedBuyers.length > 0) return;
+    if (!formData.propertyData) return;
 
+    const fetchAndMatchBuyers = async () => {
+      setBuyersLoading(true);
+      setBuyersError(null);
+
+      try {
+        const response = await fetch("http://localhost:3001/api/buyers");
+        if (!response.ok) throw new Error("Failed to fetch buyers");
+
+        const buyers = await response.json();
+        const matches = buyers
+          .map(buyer => ({
+            ...buyer,
+            matchPercent: calculateBuyerMatch(initialFormData, buyer)
+          }))
+          .filter(b => b.matchPercent > 0)
+          .sort((a, b) => b.matchPercent - a.matchPercent);
+        // console.log("FormData:", formData);
+        setFormData(prev => ({
+          ...prev,
+          matchedBuyers: matches,
+          buyersCount: matches.length,
+          buyerIds: matches.map(b => b.id)
+        }));
+      } catch (err) {
+        console.error("Buyer fetch/match error:", err);
+        setBuyersError(err.message);
+      } finally {
+        setBuyersLoading(false);
+      }
+    };
+
+    fetchAndMatchBuyers();
+  }, [formData.propertyData, calculateBuyerMatch, isEditing]);
+
+  // Update form data when editing
+  useEffect(() => {
     if (location.state?.contractData) {
       setFormData(prev => ({
         ...prev,
@@ -209,7 +247,6 @@ export default function DealSubmission() {
         Company: user?.company || "Buy Box Mafia",
         submittedBy: user?.id || user?.uid,
         urlAddress: decodeURIComponent(fullAddress),
-        // Don't overwrite matched buyers if they've been calculated
         matchedBuyers: prev.matchedBuyers.length > 0 ? prev.matchedBuyers :
           (location.state.contractData.matchedBuyers || []),
         buyersCount: prev.matchedBuyers.length > 0 ? prev.matchedBuyers.length :
@@ -224,10 +261,16 @@ export default function DealSubmission() {
           'N/A',
         propertyType: location.state.contractData.propertyType ||
           propertyData?.summary?.propClass ||
-          'N/A'
+          'N/A',
+        propertyData: prev.propertyData || location.state.contractData.propertyData || {
+          address: propertyData?.address,
+          lot: propertyData?.lot,
+          assessment: propertyData?.assessment,
+          summary: propertyData?.summary
+        }
       }));
     }
-  }, [location.state?.contractData, user, fullAddress]);
+  }, [location.state?.contractData, user, fullAddress, propertyData]);
 
   const removeFile = () => {
     setSelectedFile(null);
@@ -264,13 +307,13 @@ export default function DealSubmission() {
       alert("Please select a valid PDF file");
     }
   };
+
   const handleSubmit = async () => {
     setIsLoading(true);
     let uploaded = null;
 
     try {
-
-      const currentDealId = isEditing ? (formData.id || formData.dealId || dealId || id) : null;
+      const currentDealId = isEditing ? (formData.id || formData.dealId || dealId) : null;
       if (selectedFile) {
         const uploadResp = await uploadFileToServer(selectedFile);
         if (!uploadResp?.file) {
@@ -290,7 +333,6 @@ export default function DealSubmission() {
         ...Object.fromEntries(
           Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null)
         ),
-        // Only include file data if we uploaded a new file
         ...(uploaded && {
           contractFile: {
             url: uploaded.url,
@@ -300,16 +342,11 @@ export default function DealSubmission() {
             format: uploaded.format,
           }
         }),
-        // Ensure we have the dealId for updates
-        ...(isEditing && { id: currentDealId }), // Include ID for updates
+        ...(isEditing && { id: currentDealId }),
       };
 
-
-      // Determine if we're updating or creating
       if (isEditing && currentDealId) {
-        const response = await updateDeal(currentDealId, payload);
-
-        // Show success message
+        await updateDeal(currentDealId, payload);
         setShowModal({
           show: true,
           title: "Deal Updated",
@@ -318,24 +355,18 @@ export default function DealSubmission() {
         });
       } else {
         const response = await addDeal(payload);
-
-        // Show success message
         setShowModal({
           show: true,
           title: "Deal Created",
           message: "Your new deal has been successfully created!",
           isSuccess: true
         });
-
-        // If creating new deal, store the new dealId
         if (response?.dealId) {
           setFormData(prev => ({ ...prev, dealId: response.dealId }));
         }
       }
-
     } catch (error) {
       console.error("Submit error:", error);
-      // Clean up uploaded file if submission failed
       if (uploaded?.public_id) {
         try {
           await deleteUploadedFile(uploaded.public_id);
@@ -344,7 +375,6 @@ export default function DealSubmission() {
         }
       }
 
-      // Show error message
       setShowModal({
         show: true,
         title: "Error",
@@ -355,6 +385,7 @@ export default function DealSubmission() {
       setIsLoading(false);
     }
   };
+
   const handleConfirmSubmit = () => {
     setShowModal(false);
     navigate("/property-search");
@@ -373,14 +404,15 @@ export default function DealSubmission() {
     ownerPhone: contractData.sellerPhone || 'N/A',
     ownerEmail: contractData.sellerEmail || 'N/A',
     lastContact: contractData.lastContact || 'N/A',
-    propertyType: contractData.propertyType || 'N/A', // Use the value from contractData
+    propertyType: contractData.propertyType || 'N/A',
     utilities: contractData.utilities || 'N/A',
     roadAccess: contractData.roadAccess || 'N/A',
     topography: contractData.topography || 'N/A',
     floodZone: contractData.floodZone || 'N/A',
-    taxAssessedValue: contractData.taxAssessedValue || 'N/A', // Use the value from contractData
-    annualTaxes: contractData.annualTaxes || 'N/A' // Use the value from contractData
+    taxAssessedValue: contractData.taxAssessedValue || 'N/A',
+    annualTaxes: contractData.annualTaxes || 'N/A'
   };
+
   if (isLoadingData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 font-inter flex items-center justify-center">
@@ -409,6 +441,7 @@ export default function DealSubmission() {
       </div>
     );
   }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -598,92 +631,92 @@ export default function DealSubmission() {
             </div>
 
             {/* Contract Upload */}
-{/* Contract Upload */}
-<div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]">
-  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-    <FileText size={20} className="text-[var(--mafia-red)]" />
-    Contract Upload
-  </h3>
+            {/* Contract Upload */}
+            <div className="bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <FileText size={20} className="text-[var(--mafia-red)]" />
+                Contract Upload
+              </h3>
 
-  {/* Show selected file if uploading new */}
-  {selectedFile ? (
-    <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText size={24} className="text-[var(--mafia-red)]" />
-          <div>
-            <p className="font-medium text-white">{selectedFile.name}</p>
-            <p className="text-sm text-[var(--secondary-gray-text)]">
-              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={removeFile}
-            className="p-2 text-red-600 hover:text-red-700 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : 
-  /* Show existing contract file in edit mode */
-  isEditing && formData.contractFile ? (
-    <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText size={24} className="text-[var(--mafia-red)]" />
-          <div>
-            <p className="font-medium text-white">
-              {formData.contractFile.original_filename}
-            </p>
-            <p className="text-sm text-[var(--secondary-gray-text)]">
-              {(formData.contractFile.bytes / 1024).toFixed(2)} KB
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <a 
-            href={formData.contractFile.url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="p-2 text-blue-500 hover:text-blue-700 transition-colors"
-          >
-            View
-          </a>
-          <button
-            onClick={removeFile}
-            className="p-2 text-red-600 hover:text-red-700 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : (
-    /* Show upload area when no file selected */
-    <div className="border-2 border-dashed border-[var(--tertiary-gray-bg)] rounded-xl p-8 text-center hover:border-[var(--mafia-red)] transition-colors">
-      <Upload size={48} className="mx-auto text-[var(--primary-gray-text)] mb-4" />
-      <p className="text-[var(--primary-gray-text)] mb-2">Upload your contract PDF</p>
-      <p className="text-sm text-[var(--secondary-gray-text)] mb-4">Drag and drop or click to browse</p>
-      <label className="cursor-pointer">
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <span className="inline-flex items-center px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg hover:bg-[var(--mafia-red)]/90 transition-colors">
-          Choose File
-        </span>
-      </label>
-    </div>
-  )}
-</div>
+              {/* Show selected file if uploading new */}
+              {selectedFile ? (
+                <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FileText size={24} className="text-[var(--mafia-red)]" />
+                      <div>
+                        <p className="font-medium text-white">{selectedFile.name}</p>
+                        <p className="text-sm text-[var(--secondary-gray-text)]">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={removeFile}
+                        className="p-2 text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) :
+                /* Show existing contract file in edit mode */
+                isEditing && formData.contractFile ? (
+                  <div className="border border-[var(--tertiary-gray-bg)] rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText size={24} className="text-[var(--mafia-red)]" />
+                        <div>
+                          <p className="font-medium text-white">
+                            {formData.contractFile.original_filename}
+                          </p>
+                          <p className="text-sm text-[var(--secondary-gray-text)]">
+                            {(formData.contractFile.bytes / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <a
+                          href={formData.contractFile.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-blue-500 hover:text-blue-700 transition-colors"
+                        >
+                          View
+                        </a>
+                        <button
+                          onClick={removeFile}
+                          className="p-2 text-red-600 hover:text-red-700 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Show upload area when no file selected */
+                  <div className="border-2 border-dashed border-[var(--tertiary-gray-bg)] rounded-xl p-8 text-center hover:border-[var(--mafia-red)] transition-colors">
+                    <Upload size={48} className="mx-auto text-[var(--primary-gray-text)] mb-4" />
+                    <p className="text-[var(--primary-gray-text)] mb-2">Upload your contract PDF</p>
+                    <p className="text-sm text-[var(--secondary-gray-text)] mb-4">Drag and drop or click to browse</p>
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <span className="inline-flex items-center px-4 py-2 bg-[var(--mafia-red)] text-white rounded-lg hover:bg-[var(--mafia-red)]/90 transition-colors">
+                        Choose File
+                      </span>
+                    </label>
+                  </div>
+                )}
+            </div>
 
-       
+
             {/* Submit Button */}
             <motion.button
               variants={buttonHover}

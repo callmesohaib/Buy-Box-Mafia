@@ -41,7 +41,32 @@ export default function ValuationResult() {
   const [initialLoad, setInitialLoad] = useState(true);
 
   const PROPERTY_IMAGE_URL = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+  function isLocationMatch(locations, property) {
+    const target = property.address?.oneLine?.toLowerCase();
+    if (!target) return false;
 
+    // Split target into words
+    const targetWords = target.split(/[\s,]+/).filter(Boolean);
+
+    return locations.some(loc => {
+      // Split by slash into multiple possible addresses
+      const parts = loc.split("/").map(p => p.trim().toLowerCase());
+
+      return parts.some(part => {
+        const partWords = part.split(/[\s,]+/).filter(Boolean);
+
+        // Count matching words
+        let matches = 0;
+        for (const word of partWords) {
+          if (targetWords.includes(word)) matches++;
+        }
+
+        // Decide threshold (e.g., 60% words must match)
+        const matchRatio = matches / partWords.length;
+        return matchRatio >= 0.6; // tweak ratio as needed
+      });
+    });
+  }
   const calculateBuyerMatch = useCallback((property, buyer) => {
     if (!property || !buyer) return 0;
 
@@ -64,11 +89,11 @@ export default function ValuationResult() {
 
     // Class match
     total++;
-    if (zoning.some(z => z?.toLowerCase() === property.summary?.propClass?.toLowerCase())) score++;
+    if (zoning.some(z => z?.toLowerCase() === property.lot?.zoningType?.toLowerCase())) score++;
 
     // Locations match
     total++;
-    if (locations.some(l => l?.toLowerCase() === property.address?.locality?.toLowerCase())) score++;
+    if (isLocationMatch(locations, property)) score++;
 
     // Budget match
     total++;
