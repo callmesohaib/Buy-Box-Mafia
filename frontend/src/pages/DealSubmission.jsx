@@ -59,7 +59,6 @@ export default function DealSubmission() {
 
   // Buyer matching function
   const calculateBuyerMatch = useCallback((property, buyer) => {
-    console.log("Calculating match for buyer:", buyer.name, "with property:", property);
     if (!property || !buyer) return 0;
 
     let score = 0, total = 0;
@@ -99,7 +98,6 @@ export default function DealSubmission() {
       else if (!isNaN(min) && isNaN(max) && price >= min) score++;
       else if (isNaN(min) && !isNaN(max) && price <= max) score++;
     }
-    console.log("Budget match score:", score);
 
     return Math.round((score / total) * 100);
   }, []);
@@ -215,7 +213,6 @@ export default function DealSubmission() {
           }))
           .filter(b => b.matchPercent > 0)
           .sort((a, b) => b.matchPercent - a.matchPercent);
-        // console.log("FormData:", formData);
         setFormData(prev => ({
           ...prev,
           matchedBuyers: matches,
