@@ -242,47 +242,51 @@ export default function BuyersPanel() {
       }
     });
   };
-  if (noBuyers) {
-    return (
-      <motion.div
-        className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 rounded-xl p-6 text-center"
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-      >
-        <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 max-w-md">
-          <div className="text-2xl font-bold text-white mb-2">No Buyers Found</div>
-          <p className="text-gray-400 mb-6">
-            {searchTerm
+if (noBuyers) {
+  return (
+    <motion.div
+      className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 rounded-xl p-6 text-center"
+      variants={fadeInUp}
+      initial="initial"
+      animate="animate"
+    >
+      <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 max-w-md">
+        <div className="text-2xl font-bold text-white mb-2">
+          {userRole === 'admin' ? 'No Buyers Added Yet' : 'No Buyers Found'}
+        </div>
+        <p className="text-gray-400 mb-6">
+          {userRole === 'admin' 
+            ? "Subadmins haven't added any buyers yet."
+            : searchTerm
               ? "No buyers match your search criteria."
               : "You haven't added any buyers yet."}
-          </p>
+        </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            {searchTerm ? (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-              >
-                Clear Search
-              </button>
-            ) : null}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {searchTerm ? (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            >
+              Clear Search
+            </button>
+          ) : null}
 
-            {(userRole === 'subadmin' || userRole === 'admin') && (
-              <button
-                onClick={() => navigate('/subadmin/buyer/new_buyer')}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Plus size={18} />
-                Add New Buyer
-              </button>
-            )}
-          </div>
+          {/* Only show "Add New Buyer" button for subadmin */}
+          {userRole === 'subadmin' && (
+            <button
+              onClick={() => navigate('/subadmin/buyer/new_buyer')}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              Add New Buyer
+            </button>
+          )}
         </div>
-      </motion.div>
-    );
-  }
-
+      </div>
+    </motion.div>
+  );
+}
 
   if (loading) {
     return (
