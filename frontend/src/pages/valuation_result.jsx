@@ -172,7 +172,6 @@ export default function ValuationResult() {
 
   const formatSize = size =>
     `${size?.bldgSize || size?.livingSize || size?.universalSize || 'N/A'} sqft`;
-
   // Loading and error states
   if (loading) {
     return (
@@ -261,29 +260,41 @@ export default function ValuationResult() {
               </h2>
 
               {/* Buyer Match Alert */}
-              <motion.div
-                variants={fadeInUp}
-                initial="initial"
-                animate="animate"
-                className="bg-[var(--tertiary-gray-bg)] border border-green-700 rounded-xl p-4 mb-6"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                    <UserCheck size={16} className="text-white" />
-                  </div>
-                  <h3 className="font-semibold text-green-200">Perfect Buyer Match Found!</h3>
-                </div>
-                <p className="text-green-200 text-sm mb-3">
-                  There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
-                  We can sell it to them for <span className="font-bold">{propertyData.assessment?.assessed?.assdTtlValue ? `$${propertyData.assessment.assessed.assdTtlValue}` : 'N/A'}</span>.
-                </p>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <TrendingUp size={14} className="text-green-300" />
-                    <span className="text-green-200">List Price: {propertyData.assessment?.assessed?.assdTtlValue ? `$${propertyData.assessment?.assessed?.assdTtlValue}` : 'N/A'}</span>
-                  </div>
-                </div>
-              </motion.div>
+{/* Buyer Match Alert */}
+<motion.div
+  variants={fadeInUp}
+  initial="initial"
+  animate="animate"
+  className="bg-[var(--tertiary-gray-bg)] border border-green-700 rounded-xl p-4 mb-6"
+>
+  <div className="flex items-center gap-3 mb-2">
+    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+      <UserCheck size={16} className="text-white" />
+    </div>
+    <h3 className="font-semibold text-green-200">Perfect Buyer Match Found!</h3>
+  </div>
+  <p className="text-green-200 text-sm mb-3">
+    There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
+    We can sell it to them for <span className="font-bold">
+      {matchedBuyers.length > 0 ? 
+        `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()}` : 
+        'N/A'
+      }
+    </span>.
+  </p>
+  <div className="flex items-center gap-4 text-sm">
+    <div className="flex items-center gap-1">
+      <TrendingUp size={14} className="text-green-300" />
+      <span className="text-green-200">
+        Top Offer Price Per Acre: {
+          matchedBuyers.length > 0 ? 
+            `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()}` : 
+            'N/A'
+        }
+      </span>
+    </div>
+  </div>
+</motion.div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="flex items-center gap-3">
