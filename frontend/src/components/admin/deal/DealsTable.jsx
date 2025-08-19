@@ -86,27 +86,32 @@ export default function DealsTable() {
   const rejected = dealList.filter((d) => d.status === "Rejected").length;
 
   // Handlers
-  const handleApprove = async (id) => {
-    try {
-      setUpdatingDeals((prev) => ({ ...prev, [id]: true }));
-      await updateDeal(id, { status: "Approved" });
-      setDealList((list) =>
-        list.map((d) => (d.id === id ? { ...d, status: "Approved" } : d))
-      );
-    } catch (error) {
-      console.error("Error approving deal:", error);
-      setErrorMessages((prev) => ({ ...prev, [id]: error.message }));
-      setTimeout(() => {
-        setErrorMessages((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[id];
-          return newErrors;
-        });
-      }, 5000);
-    } finally {
-      setUpdatingDeals((prev) => ({ ...prev, [id]: false }));
-    }
-  };
+const handleApprove = async (id) => {
+  try {
+    setUpdatingDeals((prev) => ({ ...prev, [id]: true }));
+    
+    await updateDeal(id, { 
+      status: "Approved"
+      // Don't send discordWebhookUrl as a separate field
+    });
+    
+    setDealList((list) =>
+      list.map((d) => (d.id === id ? { ...d, status: "Approved" } : d))
+    );
+  } catch (error) {
+    console.error("Error approving deal:", error);
+    setErrorMessages((prev) => ({ ...prev, [id]: error.message }));
+    setTimeout(() => {
+      setErrorMessages((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[id];
+        return newErrors;
+      });
+    }, 5000);
+  } finally {
+    setUpdatingDeals((prev) => ({ ...prev, [id]: false }));
+  }
+};
 
   const handleReject = async (id) => {
     try {

@@ -86,13 +86,10 @@ export default function ContractPreparation() {
     };
   });
   const dealId = useMemo(() => {
-    // First check location state (works for both edit and create modes)
     if (location.state?.dealId) return location.state.dealId;
 
-    // In edit mode, check contractData if available
     if (isEditing && contractData.dealId) return contractData.dealId;
 
-    // Fall back to property data (for create mode)
     return propertyData?.identifier?.attomId || '';
   }, [
     location.state?.dealId,

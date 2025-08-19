@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect } from "react";
-import { User, Building, MapPin, DollarSign, FileCheck, Mail, Phone, AlertCircle } from "lucide-react"
+import { User, Building, MapPin, DollarSign, FileCheck, Mail, Phone, AlertCircle, Globe } from "lucide-react"
 import { staggerContainer, staggerItem, inputFocusVariants, errorMessageVariants } from "../../animations/animation"
 import { scoutService } from "../../services/scoutService";
 import { useAuth } from "../../store/AuthContext";
@@ -22,8 +22,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
     }
   }
 
-  
-  // Minimalist section card style
+
   const sectionClass =
     "bg-[var(--secondary-gray-bg)] rounded-2xl p-6 shadow-sm border border-[var(--tertiary-gray-bg)]"
   const headingClass =
@@ -53,6 +52,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
           Scout Information
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Scout Name */}
           <div>
             <label className={labelClass}>Scout Name</label>
             <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">
@@ -68,6 +68,8 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               />
             </motion.div>
           </div>
+
+          {/* Scout Email */}
           <div>
             <label className={labelClass}>Scout Email</label>
             <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">
@@ -83,6 +85,8 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               />
             </motion.div>
           </div>
+
+          {/* Scout Phone */}
           <div>
             <label className={labelClass}>Scout Phone</label>
             <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">
@@ -99,6 +103,7 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
             </motion.div>
           </div>
 
+          {/* Company */}
           <div>
             <label className={labelClass}>Company</label>
             <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">
@@ -114,8 +119,25 @@ export default function ContractForm({ formData, setFormData, errors, setErrors 
               />
             </motion.div>
           </div>
+
+          {/* ✅ Discord Channel Link */}
+          <div className="md:col-span-2">
+            <label className={labelClass}>Discord Channel Link</label>
+            <motion.div className="relative" variants={inputFocusVariants} whileFocus="focus">
+              <Globe size={18} className={inputIconClass} />
+              <input
+                type="url"
+                name="discordChannel"
+                value={formData.discordChannel || ""}
+                onChange={handleInputChange}
+                className={inputBase + " pl-10"}
+                placeholder="https://discord.gg/your-channel"
+              />
+            </motion.div>
+          </div>
         </div>
       </motion.div>
+
 
       {/* Seller Information */}
       <motion.div variants={staggerItem} className={sectionClass}>

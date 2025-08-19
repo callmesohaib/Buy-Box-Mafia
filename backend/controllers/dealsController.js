@@ -1,10 +1,6 @@
 const { db, admin } = require("../utils/firebase");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
-
-const DISCORD_WEBHOOK_URL =
-  "https://discord.com/api/webhooks/1403705792003051633/CtZhBmw__sJRTJ1_4Q74ChXuQbK-cZ0MNfDwUP9E6jAixXiJTEwsonezkilYryDMlnT5";
-// Transform request body to Firestore deal format
 const toFirestoreDeal = (body) => {
   // Helper to safely get value or fallback to null
   const safe = (v, fallback = null) => (v === undefined ? fallback : v);
@@ -14,6 +10,7 @@ const toFirestoreDeal = (body) => {
     scoutEmail: safe(body.scoutEmail, ""),
     scoutPhone: safe(body.scoutPhone, ""),
     scoutCompany: safe(body.Company, ""),
+    discordChannel: safe(body.discordChannel, ""),
 
     // Seller Information
     sellerName: safe(body.sellerName, ""),
@@ -126,26 +123,26 @@ exports.getDeals = async (req, res) => {
       ...new Set(deals.map((deal) => deal.submittedBy).filter(Boolean)),
     ];
 
-    // Batch fetch all user documents in one query
-    const usersSnapshot =
-      userIds.length > 0
-        ? await db
-            .collection("users")
-            .where(admin.firestore.FieldPath.documentId(), "in", userIds)
-            .get()
-        : { docs: [] };
-
     // Create a map of user IDs to names
     const usersMap = {};
-    usersSnapshot.forEach((doc) => {
-      usersMap[doc.id] = doc.data().name || "Unknown";
-    });
+
+    // Only fetch users if there are userIds
+    if (userIds.length > 0) {
+      const usersSnapshot = await db
+        .collection("users")
+        .where(admin.firestore.FieldPath.documentId(), "in", userIds)
+        .get();
+
+      usersSnapshot.forEach((doc) => {
+        usersMap[doc.id] = doc.data().name || "Unknown";
+      });
+    }
 
     // Enhance deals data with submitter names
     const dealsWithNames = deals.map((deal) => ({
       ...deal,
       submittedByName: deal.submittedBy
-        ? usersMap[deal.submittedBy]
+        ? usersMap[deal.submittedBy] || "Unknown"
         : "Unknown",
     }));
 
@@ -176,9 +173,9 @@ exports.getDealById = async (req, res) => {
   }
 };
 
-async function sendDiscordNotification(scoutName, dealId) {
+async function sendDiscordNotification(scoutName, dealId, webhookUrl) {
   try {
-    await axios.post(DISCORD_WEBHOOK_URL, {
+    await axios.post(webhookUrl, {
       embeds: [
         {
           title: "🎉 Deal Approved!",
@@ -208,7 +205,6 @@ async function sendDiscordNotification(scoutName, dealId) {
         },
       ],
     });
-
   } catch (err) {
     console.error("❌ Failed to send Discord notification:", err.message);
   }
@@ -244,7 +240,8 @@ exports.updateDeal = async (req, res) => {
           oldDeal.scoutEmail,
           oldDeal.scoutName,
           updateData.assignedBuyerName,
-          oldDeal.apn
+          oldDeal.apn,
+          oldDeal.discordChannel
         );
       }
     }
@@ -255,7 +252,15 @@ exports.updateDeal = async (req, res) => {
         oldDeal.scoutName,
         oldDeal.apn
       );
-      await sendDiscordNotification(oldDeal.scoutName, oldDeal.apn);
+
+      // Use the existing discordChannel field from the deal
+      if (oldDeal.discordChannel) {
+        await sendDiscordNotification(
+          oldDeal.scoutName,
+          oldDeal.apn,
+          oldDeal.discordChannel
+        );
+      }
     }
 
     res.status(200).json({
@@ -272,10 +277,11 @@ async function sendBuyerAssignmentDiscord(
   scoutEmail,
   scoutName,
   buyerName,
-  apn
+  apn,
+  webhookUrl
 ) {
   try {
-    await axios.post(DISCORD_WEBHOOK_URL, {
+    await axios.post(webhookUrl, {
       embeds: [
         {
           title: "🛒 Deal Assigned to Buyer",
@@ -305,7 +311,6 @@ async function sendBuyerAssignmentDiscord(
         },
       ],
     });
-
   } catch (err) {
     console.error("❌ Failed to send Discord notification:", err.message);
   }
