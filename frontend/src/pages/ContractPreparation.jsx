@@ -24,7 +24,7 @@ export default function ContractPreparation() {
       ? JSON.parse(savedIsEditing)
       : (location.state?.isEditing || false);
   });
-
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL;
   const query = new URLSearchParams(location.search);
   const initialStep = parseInt(query.get('step')) || 0;
   const [currentStep, setCurrentStepState] = useState(initialStep);
@@ -255,7 +255,7 @@ export default function ContractPreparation() {
         const doc = generateContractPDF(contractData, formData);
         const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-        const res = await fetch("http://localhost:3001/api/docusign/create-envelope", {
+        const res = await fetch(`${API_BASE_URL}/docusign/create-envelope`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

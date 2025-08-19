@@ -80,6 +80,7 @@ export default function BuyersPanel() {
   const { user } = useAuth();
   const [submittedByFilter, setSubmittedByFilter] = useState("");
   const submittedByOptions = Array.from(new Set(buyers.map(b => b.submittedByName || "N/A")));
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
 
   const userRole = user?.role || 'guest';
@@ -87,7 +88,7 @@ export default function BuyersPanel() {
   const fetchBuyers = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/buyers");
+      const response = await fetch(`${API_BASE_URL}/buyers`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -165,7 +166,7 @@ export default function BuyersPanel() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/buyers/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/buyers/${id}`, {
         method: "DELETE",
       });
       if (response.ok) {
@@ -216,7 +217,7 @@ export default function BuyersPanel() {
         const submittedBy = user?.id || 'Unknown';
         buyers = buyers.map(b => ({ ...b, submittedBy }));
         try {
-          const response = await fetch("http://localhost:3001/api/buyers/import", {
+          const response = await fetch(`${API_BASE_URL}/buyers/import`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ buyers }),

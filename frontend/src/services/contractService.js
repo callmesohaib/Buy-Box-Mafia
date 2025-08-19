@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 const getAuthToken = () => localStorage.getItem("token");
 export const uploadFileToServer = async (file) => {
   const token = getAuthToken?.();

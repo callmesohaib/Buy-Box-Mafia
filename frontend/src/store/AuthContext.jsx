@@ -14,6 +14,8 @@ export function AuthProvider({ children }) {
         const phone = localStorage.getItem("phone") || "";
         return name && email && role && id ? { name, email, role, id, phone } : null;
     });
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
     const navigate = useNavigate();
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -32,7 +34,7 @@ export function AuthProvider({ children }) {
 
     const login = async (email, password) => {
         try {
-            const res = await fetch("http://localhost:3001/api/auth/login", {
+            const res = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),

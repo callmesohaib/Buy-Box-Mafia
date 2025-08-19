@@ -12,6 +12,8 @@ export default function ResetPassword() {
   const [tokenValid, setTokenValid] = useState(false);
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
@@ -20,7 +22,7 @@ export default function ResetPassword() {
     setToken(tokenParam || "");
     if (emailParam && tokenParam) {
       // Verify token with backend
-      fetch(`http://localhost:3001/api/auth/verify-reset-token?email=${encodeURIComponent(emailParam)}&token=${tokenParam}`)
+      fetch(`${API_BASE_URL}/auth/verify-reset-token?email=${encodeURIComponent(emailParam)}&token=${tokenParam}`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -48,7 +50,7 @@ export default function ResetPassword() {
       return;
     }
     setIsLoading(true);
-    const res = await fetch("http://localhost:3001/api/auth/reset-password", {
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),

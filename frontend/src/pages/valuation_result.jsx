@@ -39,6 +39,8 @@ export default function ValuationResult() {
   const [matchedBuyers, setMatchedBuyers] = useState([]);
   const [activeTab, setActiveTab] = useState('top');
   const [initialLoad, setInitialLoad] = useState(true);
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
   const PROPERTY_IMAGE_URL = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
   function isLocationMatch(locations, property) {
@@ -127,7 +129,7 @@ export default function ValuationResult() {
       setBuyersError(null);
 
       try {
-        const response = await fetch("http://localhost:3001/api/buyers");
+        const response = await fetch(`${API_BASE_URL}/buyers`);
         if (!response.ok) throw new Error("Failed to fetch buyers");
 
         const data = await response.json();

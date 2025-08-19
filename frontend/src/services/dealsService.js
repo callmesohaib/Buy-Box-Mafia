@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3001/api/deals";
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const getAuthToken = () => localStorage.getItem("token");
 
@@ -15,7 +15,7 @@ export const addDeal = async (dealData) => {
   // Remove undefined fields to avoid Firestore error
   const cleanDealData = removeUndefined(dealData);
   // For debugging
-  const res = await fetch(`${API_BASE_URL}`, {
+  const res = await fetch(`${API_BASE_URL}/deals`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -33,7 +33,7 @@ export const addDeal = async (dealData) => {
 // Get all deals
 export const getDeals = async () => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}`, {
+  const res = await fetch(`${API_BASE_URL}/deals`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -49,7 +49,7 @@ export const getDeals = async () => {
 // Get a single deal by ID
 export const getDealById = async (id) => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/deals/${id}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -65,7 +65,7 @@ export const getDealById = async (id) => {
 // Get deals by status
 export const getDealsByStatus = async (status) => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/status/${status}`, {
+  const res = await fetch(`${API_BASE_URL}/deals/status/${status}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -82,7 +82,7 @@ export const getDealsByStatus = async (status) => {
 export const updateDeal = async (id, updateData) => {
   const token = getAuthToken();
   const cleanUpdateData = removeUndefined(updateData);
-  const res = await fetch(`${API_BASE_URL}/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/deals/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -100,7 +100,7 @@ export const updateDeal = async (id, updateData) => {
 // Delete a deal
 export const deleteDeal = async (id) => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/deals/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -117,7 +117,7 @@ export const deleteDeal = async (id) => {
 // Import multiple deals
 export const importDeals = async (deals) => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/import`, {
+  const res = await fetch(`${API_BASE_URL}/deals/import`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -150,7 +150,7 @@ export const getDealsBySubmitter = async (submitterId) => {
 // Get potential buyers for a specific deal
 export const getDealMatches = async (dealId) => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/${dealId}/matches`, {
+  const res = await fetch(`${API_BASE_URL}/deals/${dealId}/matches`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -166,7 +166,7 @@ export const getDealMatches = async (dealId) => {
 // Get potential buyers count for all deals
 export const getPotentialBuyersCount = async () => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/potential-buyers/count`, {
+  const res = await fetch(`${API_BASE_URL}/deals/potential-buyers/count`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -182,7 +182,7 @@ export const getPotentialBuyersCount = async () => {
 // Get overview analytics data
 export const getOverviewAnalytics = async () => {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/analytics/overview`, {
+  const res = await fetch(`${API_BASE_URL}/deals/analytics/overview`, {
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),

@@ -26,6 +26,8 @@ export default function DealSubmission() {
   const [buyersError, setBuyersError] = useState(null);
   const isEditing = location.state?.isEditing || false;
   const dealId = location.state?.dealId;
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
   // Location matching function
   function isLocationMatch(locations, property) {
@@ -202,7 +204,7 @@ export default function DealSubmission() {
       setBuyersError(null);
 
       try {
-        const response = await fetch("http://localhost:3001/api/buyers");
+        const response = await fetch(`${API_BASE_URL}/buyers`);
         if (!response.ok) throw new Error("Failed to fetch buyers");
 
         const buyers = await response.json();

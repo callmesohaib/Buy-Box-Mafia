@@ -9,6 +9,8 @@ const About = () => {
     const [error, setError] = useState(null);
     const [hoveredBuyer, setHoveredBuyer] = useState(null);
     const mapRef = useRef(null);
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
     // Enhanced geocoding that includes country information
     const geocodeCity = async (cityName) => {
@@ -33,50 +35,50 @@ const About = () => {
         }
     };
 
-const fetchBuyers = async () => {
-    setLoading(true);
-    setError(null);
+    const fetchBuyers = async () => {
+        setLoading(true);
+        setError(null);
 
-    try {
-        const response = await fetch("http://localhost:3001/api/buyers");
-        if (!response.ok) {
-            throw new Error(response.status === 404 ? "No buyers found" : "Server error");
-        }
+        try {
+            const response = await fetch(`${API_BASE_URL}/buyers`);
+            if (!response.ok) {
+                throw new Error(response.status === 404 ? "No buyers found" : "Server error");
+            }
 
-        const buyersData = await response.json();
-        if (buyersData.length === 0) {
-            setError("No buyers found");
-            return;
-        }
+            const buyersData = await response.json();
+            if (buyersData.length === 0) {
+                setError("No buyers found");
+                return;
+            }
 
-        const processedBuyers = [];
+            const processedBuyers = [];
 
-        for (const buyer of buyersData) {
-            if (!buyer.buyingLocations) continue;
+            for (const buyer of buyersData) {
+                if (!buyer.buyingLocations) continue;
 
-            // split by "/" and trim spaces
-            const locations = buyer.buyingLocations.split("/").map(loc => loc.trim());
+                // split by "/" and trim spaces
+                const locations = buyer.buyingLocations.split("/").map(loc => loc.trim());
 
-            for (const loc of locations) {
-                const location = await geocodeCity(loc);
-                if (location) {
-                    processedBuyers.push({
-                        ...buyer,
-                        locationName: loc, // keep original location string
-                        ...location
-                    });
+                for (const loc of locations) {
+                    const location = await geocodeCity(loc);
+                    if (location) {
+                        processedBuyers.push({
+                            ...buyer,
+                            locationName: loc, // keep original location string
+                            ...location
+                        });
+                    }
                 }
             }
-        }
 
-        setBuyers(processedBuyers);
-    } catch (err) {
-        console.error("Error fetching buyers:", err);
-        setError(err.message);
-    } finally {
-        setLoading(false);
-    }
-};
+            setBuyers(processedBuyers);
+        } catch (err) {
+            console.error("Error fetching buyers:", err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     useEffect(() => {
@@ -177,39 +179,39 @@ const fetchBuyers = async () => {
                         />
 
                         {/* Buyer location markers */}
-{buyers.map((buyer, idx) => (
-    <Marker
-        key={`${buyer.id}-${idx}-${buyer.locationName}`}
-        position={buyer.coords}
-        icon={createRedIcon()}
-        eventHandlers={{
-            mouseover: () => setHoveredBuyer(buyer),
-            mouseout: () => setHoveredBuyer(null)
-        }}
-    >
-        <Tooltip
-            direction="top"
-            offset={[0, -10]}
-            permanent
-            className="leaflet-tooltip-city"
-        >
-            {buyer.locationName}
-        </Tooltip>
+                        {buyers.map((buyer, idx) => (
+                            <Marker
+                                key={`${buyer.id}-${idx}-${buyer.locationName}`}
+                                position={buyer.coords}
+                                icon={createRedIcon()}
+                                eventHandlers={{
+                                    mouseover: () => setHoveredBuyer(buyer),
+                                    mouseout: () => setHoveredBuyer(null)
+                                }}
+                            >
+                                <Tooltip
+                                    direction="top"
+                                    offset={[0, -10]}
+                                    permanent
+                                    className="leaflet-tooltip-city"
+                                >
+                                    {buyer.locationName}
+                                </Tooltip>
 
-        <Popup>
-            <div style={{ minWidth: 200 }}>
-                <div style={{ fontWeight: 700, fontSize: '16px' }}>{buyer.locationName}</div>
-                <div style={{ color: '#94a3b8', marginTop: '4px' }}>{buyer.country}</div>
-                <div style={{ marginTop: '8px', fontSize: '14px' }}>
-                    {buyers.filter(b => b.locationName === buyer.locationName).length} buyers in this location
-                </div>
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>
-                    {buyer.fullAddress}
-                </div>
-            </div>
-        </Popup>
-    </Marker>
-))}
+                                <Popup>
+                                    <div style={{ minWidth: 200 }}>
+                                        <div style={{ fontWeight: 700, fontSize: '16px' }}>{buyer.locationName}</div>
+                                        <div style={{ color: '#94a3b8', marginTop: '4px' }}>{buyer.country}</div>
+                                        <div style={{ marginTop: '8px', fontSize: '14px' }}>
+                                            {buyers.filter(b => b.locationName === buyer.locationName).length} buyers in this location
+                                        </div>
+                                        <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>
+                                            {buyer.fullAddress}
+                                        </div>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        ))}
 
 
                         {hoveredBuyer && (

@@ -40,6 +40,8 @@ export default function BuyerForm({ onClose }) {
   })
   const [loading, setLoading] = useState(false);
   const isEdit = Boolean(id);
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function BuyerForm({ onClose }) {
       } else {
         // Fetch from backend if not in state
         setLoading(true);
-        fetch(`http://localhost:3001/api/buyers`)
+        fetch(`${API_BASE_URL}/buyers`)
           .then(res => res.json())
           .then(buyers => {
             const found = buyers.find(b => b.id === id);
@@ -83,7 +85,7 @@ export default function BuyerForm({ onClose }) {
     try {
       let response, data;
       if (isEdit) {
-        response = await fetch(`http://localhost:3001/api/buyers/${id}`, {
+        response = await fetch(`${API_BASE_URL}/buyers/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -97,7 +99,7 @@ export default function BuyerForm({ onClose }) {
           toast.error(data.message || "Failed to update buyer");
         }
       } else {
-        response = await fetch("http://localhost:3001/api/buyers", {
+        response = await fetch(`${API_BASE_URL}/buyers`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

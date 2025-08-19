@@ -8,6 +8,7 @@ export default function SignatureStep({ envelopeId, fullAddress }) {
   const [error, setError] = useState("");
   const [signingUrl, setSigningUrl] = useState(null);
   const [redirectAttempted, setRedirectAttempted] = useState(false);
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
   useEffect(() => {
     const fetchSigningUrl = async () => {
@@ -15,7 +16,7 @@ export default function SignatureStep({ envelopeId, fullAddress }) {
         setLoading(true);
         setError("");
         const res = await fetch(
-          `http://localhost:3001/api/docusign/get-signing-url/${envelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`
+          `${API_BASE_URL}/docusign/get-signing-url/${envelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`
         );
 
         const data = await res.json().catch(() => ({}));

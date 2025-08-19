@@ -119,7 +119,7 @@ export default function Overview() {
               <Users size={24} className="text-green-400" />
             </div>
           </div>
-          
+
         </motion.div>
 
         <motion.div
@@ -135,7 +135,7 @@ export default function Overview() {
               <DollarSign size={24} className="text-amber-400" />
             </div>
           </div>
-         
+
         </motion.div>
 
       </div>

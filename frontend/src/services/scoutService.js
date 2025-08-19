@@ -1,7 +1,9 @@
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 export const scoutService = {
   getAllScouts: async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/scout/all", {
+      const response = await fetch(`${API_BASE_URL}/scout/all`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

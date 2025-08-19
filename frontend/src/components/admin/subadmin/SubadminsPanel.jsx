@@ -25,6 +25,7 @@ export default function SubadminsPanel() {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedSubadmin, setSelectedSubadmin] = useState(null);
     const [buyersCountMap, setBuyersCountMap] = useState({}); // Added state for buyers count map
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
     function formatDate(date) {
         if (!date) return 'Unknown';
@@ -76,7 +77,7 @@ export default function SubadminsPanel() {
                 const subadminUsers = allUsers.filter(user => user.role === "subadmin");
 
                 // 2. Fetch buyers count per subadmin
-                const res = await fetch("http://localhost:3001/api/buyers/total-buyers-by-subadmin", {
+                const res = await fetch(`${API_BASE_URL}/buyers/total-buyers-by-subadmin`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",

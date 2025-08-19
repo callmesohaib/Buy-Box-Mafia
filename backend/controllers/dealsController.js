@@ -625,7 +625,7 @@ exports.getOverviewAnalytics = async (req, res) => {
       .slice(0, 3)
       .map((deal) => ({
         id: deal.id,
-        dealId: deal.dealId || deal.mlsNumber || deal.id,
+        dealId: deal.apn,
         propertyAddress: deal.propertyAddress || "Address not available",
         offerPrice: deal.offerPrice || "Price not available",
         status: deal.status || "Unknown",

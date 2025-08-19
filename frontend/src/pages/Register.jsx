@@ -44,7 +44,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/scout/register", {
+      const res = await fetch(`${API_BASE_URL}/scout/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

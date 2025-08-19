@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
 // API service for subadmin operations
 export const subadminService = {
@@ -99,14 +99,12 @@ export const subadminService = {
   // Delete subadmin
   deleteSubadmin: async (id) => {
     try {
-
       const response = await fetch(`${API_BASE_URL}/subadmin/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
       });
-
 
       if (!response.ok) {
         let errorMessage = "Failed to delete subadmin";

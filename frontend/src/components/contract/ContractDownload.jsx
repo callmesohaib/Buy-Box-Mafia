@@ -3,13 +3,15 @@ function DownloadSignedPDF({ envelopeId, contractData, fullAddress }) {
     const [isSendingToSeller, setIsSendingToSeller] = useState(false);
     const [sendToSellerStatus, setSendToSellerStatus] = useState(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
 
     const handleDownload = async () => {
         if (!envelopeId) return;
 
         setIsDownloading(true);
         try {
-            const response = await fetch(`http://localhost:3001/api/docusign/download-signed/${envelopeId}`);
+            const response = await fetch(`${API_BASE_URL}/docusign/download-signed/${envelopeId}`);
             if (!response.ok) throw new Error('Failed to download');
 
             const blob = await response.blob();
@@ -40,7 +42,7 @@ function DownloadSignedPDF({ envelopeId, contractData, fullAddress }) {
         setSendToSellerStatus(null);
 
         try {
-            const response = await fetch('http://localhost:3001/api/docusign/send-to-seller', {
+            const response = await fetch(`${API_BASE_URL}/docusign/send-to-seller`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -150,12 +152,13 @@ function SellerSigningStatus({ sellerEnvelopeId, fullAddress }) {
     const [status, setStatus] = useState(null);
     const [isChecking, setIsChecking] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
     const checkStatus = async () => {
         if (!sellerEnvelopeId) return;
         setIsChecking(true);
         try {
-            const response = await fetch(`http://localhost:3001/api/docusign/seller-envelope-status/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
+            const response = await fetch(`${API_BASE_URL}/docusign/seller-envelope-status/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
             const data = await response.json();
             if (response.ok) setStatus(data);
         } catch (error) {
@@ -168,7 +171,7 @@ function SellerSigningStatus({ sellerEnvelopeId, fullAddress }) {
     const downloadFullySigned = async () => {
         setIsDownloading(true);
         try {
-            const response = await fetch(`http://localhost:3001/api/docusign/download-seller-signed/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
+            const response = await fetch(`${API_BASE_URL}/docusign/download-seller-signed/${sellerEnvelopeId}?fullAddress=${encodeURIComponent(fullAddress)}`);
             if (!response.ok) throw new Error('Failed to download');
 
             const blob = await response.blob();
