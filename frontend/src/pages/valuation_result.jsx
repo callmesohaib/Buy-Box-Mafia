@@ -245,14 +245,28 @@ export default function ValuationResult() {
         >
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="relative">
-              <img
-                src={PROPERTY_IMAGE_URL}
-                alt={propertyData.address?.oneLine || 'Property'}
-                className="w-full h-64 sm:h-80 lg:h-full object-cover"
-                onError={e => { e.target.src = 'https://cdn.repliers.io/sandbox/IMG-SANDBOX_2.jpg' }}
-              />
+              {propertyData.location?.latitude && propertyData.location?.longitude ? (
+                <iframe
+                  title="Aerial View Map"
+                  width="100%"
+                  height="100%"
+                  className="w-full h-64 sm:h-80 lg:h-full"
+                  style={{ border: 0, borderRadius: '0' }}
+                  loading="lazy"
+                  allowFullScreen
+                  src={`https://www.google.com/maps?q=${propertyData.location.latitude},${propertyData.location.longitude}&z=16&output=embed`}
+                ></iframe>
+              ) : (
+                <div className="w-full h-64 sm:h-80 lg:h-full bg-gray-800 flex items-center justify-center">
+                  <div className="text-[var(--secondary-gray-text)]">No map data available.</div>
+                </div>
+              )}
               <div className="absolute top-4 left-4 bg-[var(--mafia-red)] text-white px-3 py-1 rounded-lg text-sm font-medium">
                 {propertyData.lot?.zoningType || 'Property'}
+              </div>
+              <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-lg text-sm">
+                <MapPin size={14} className="inline mr-1" />
+                Aerial View
               </div>
             </div>
 
@@ -289,7 +303,7 @@ export default function ValuationResult() {
                     <span className="text-green-200">
                       Top Offer Price Per Acre: {
                         matchedBuyers.length > 0 ?
-                          `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()}` :
+                          `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()} Per Acre` :
                           'N/A'
                       }
                     </span>

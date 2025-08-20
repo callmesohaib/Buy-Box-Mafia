@@ -41,7 +41,8 @@ export default function PropertySearch() {
     yearBuilt: propertyData.summary?.yearBuilt || 'N/A',
     lotSize: propertyData.lot?.lotSize1 ? `${propertyData.lot.lotSize1} acres` : 'N/A',
     bedrooms: propertyData.building?.rooms?.beds || 'N/A',
-    bathrooms: propertyData.building?.rooms?.bathsTotal || 'N/A'
+    bathrooms: propertyData.building?.rooms?.bathsTotal || 'N/A',
+    location: propertyData.location
   });
 
   const handleSearch = (e) => {
@@ -210,16 +211,30 @@ export default function PropertySearch() {
                     </div>
                   </div>
 
-                  {/* Middle Panel - Image */}
+                  {/* Middle Panel - Aerial View */}
                   <div className="relative h-64 lg:h-auto group overflow-hidden">
-                    <img
-                      src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80"
-                      alt={propertyObject.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => e.target.src = 'https://via.placeholder.com/800x600?text=Property+Image+Not+Available'}
-                    />
-                    <div className="absolute bottom-4 left-4 bg-[var(--mafia-red)] text-white text-sm px-4 py-2 rounded-lg shadow-md">
+                    {propertyObject.location?.latitude && propertyObject.location?.longitude ? (
+                      <iframe
+                        title="Aerial View Map"
+                        width="100%"
+                        height="100%"
+                        className="w-full h-full"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        src={`https://www.google.com/maps?q=${propertyObject.location.latitude},${propertyObject.location.longitude}&z=16&output=embed`}
+                      ></iframe>
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                        <div className="text-[var(--secondary-gray-text)]">No map data available</div>
+                      </div>
+                    )}
+                    <div className="absolute top-4 left-4 bg-[var(--mafia-red)] text-white text-sm px-4 py-2 rounded-lg shadow-md">
                       {propertyObject.price}
+                    </div>
+                    <div className="absolute bottom-4 left-4 bg-black/70 text-white text-sm px-3 py-1 rounded-lg">
+                      <MapPin size={14} className="inline mr-1" />
+                      Aerial View
                     </div>
                   </div>
 
