@@ -39,7 +39,7 @@ const forgotPasswordController = {
       });
       // Send email with reset link
       const resetUrl = `${
-        process.env.FRONTEND_URL || "http://localhost:5173"
+        process.env.FRONTEND_URL
       }/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
       const mailOptions = {
         from: process.env.EMAIL_USER,

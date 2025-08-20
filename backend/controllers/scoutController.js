@@ -3,7 +3,6 @@ const { db } = require("../utils/firebase");
 const { ROLES } = require("../utils/constants");
 const nodemailer = require("nodemailer");
 
-// Email transporter configuration
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
