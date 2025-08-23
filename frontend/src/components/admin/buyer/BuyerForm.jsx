@@ -42,6 +42,81 @@ export default function BuyerForm({ onClose }) {
   const isEdit = Boolean(id);
   const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
+  const validateForm = () => {
+    // Required fields
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return false;
+    }
+    if (!form.email.trim()) {
+      toast.error("Email is required");
+      return false;
+    }
+    if (!form.phone.trim()) {
+      toast.error("Phone is required");
+      return false;
+    }
+    if (!form.city.trim()) {
+      toast.error("City is required");
+      return false;
+    }
+    if (!form.country.trim()) {
+      toast.error("Country is required");
+      return false;
+    }
+    if (!form.buyingLocations.trim()) {
+      toast.error("Buying locations are required");
+      return false;
+    }
+
+    // Email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error("Invalid email format");
+      return false;
+    }
+
+    // Phone format (basic)
+    const phoneRegex = /^\+?[0-9\s-]{7,15}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error("Invalid phone number");
+      return false;
+    }
+
+    // Budget validation
+    if (!form.budgetMin.trim()) {
+      toast.error("Minimum budget is required");
+      return false;
+    }
+    if (!form.budgetMax.trim()) {
+      toast.error("Maximum budget is required");
+      return false;
+    }
+
+    // Budget vs Locations
+    const locationsCount = form.buyingLocations
+      ? form.buyingLocations.split("/").map(l => l.trim()).filter(Boolean).length
+      : 0;
+
+    const minBudgetParts = form.budgetMin
+      ? form.budgetMin.split("/").map(b => b.trim()).filter(Boolean).length
+      : 0;
+    const maxBudgetParts = form.budgetMax
+      ? form.budgetMax.split("/").map(b => b.trim()).filter(Boolean).length
+      : 0;
+
+    if (locationsCount > 0 && (minBudgetParts !== locationsCount || maxBudgetParts !== locationsCount)) {
+      toast.error("Budgets must match the number of buying locations");
+      return false;
+    }
+
+    if (!form.timeline.trim()) {
+      toast.error("Timeline is required");
+      return false;
+    }
+
+    return true;
+  };
 
 
   useEffect(() => {
@@ -78,10 +153,28 @@ export default function BuyerForm({ onClose }) {
     e && e.preventDefault()
     setStep(s => Math.max(s - 1, 0))
   }
+
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!validateForm()) return
+    // Count buying locations
+    const locationsCount = form.buyingLocations
+      ? form.buyingLocations.split("/").map(l => l.trim()).filter(Boolean).length
+      : 0;
+
+    // Count budgets
+    const minBudgetParts = form.budgetMin ? form.budgetMin.split("/").map(b => b.trim()).filter(Boolean).length : 0;
+    const maxBudgetParts = form.budgetMax ? form.budgetMax.split("/").map(b => b.trim()).filter(Boolean).length : 0;
+
+    // Validation
+    if (locationsCount > 0 && (minBudgetParts !== locationsCount || maxBudgetParts !== locationsCount)) {
+      toast.error("Number of budget entries must match number of buying locations");
+      return;
+    }
+
     const submittedBy = user.id || 'Unknown';
     const payload = { ...form, submittedBy };
+
     try {
       let response, data;
       if (isEdit) {
@@ -117,6 +210,7 @@ export default function BuyerForm({ onClose }) {
       toast.error(isEdit ? "Error updating buyer" : "Error adding buyer");
     }
   };
+
 
   if (loading) return <div className="text-center text-gray-300 py-12">Loading...</div>;
 
