@@ -365,7 +365,7 @@ export default function BuyerForm({ onClose }) {
                     name="budgetMin"
                     value={form.budgetMin}
                     onChange={handleChange}
-                    type="number"
+                    type="text"
                     min="0"
                     step="any"
                     placeholder="Minimum budget amount"
@@ -378,7 +378,7 @@ export default function BuyerForm({ onClose }) {
                     name="budgetMax"
                     value={form.budgetMax}
                     onChange={handleChange}
-                    type="number"
+                    type="text"
                     min="0"
                     step="any"
                     placeholder="Maximum budget amount"
