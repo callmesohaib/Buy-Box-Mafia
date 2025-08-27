@@ -57,29 +57,32 @@ export default function ValuationResult() {
     const n = Number(String(field).replace(/[^0-9.-]+/g, ''));
     return [isNaN(n) ? NaN : n];
   };
-  const buildRangeString = (min, max) => {
-    const hasMin = !isNaN(min);
-    const hasMax = !isNaN(max);
-    if (hasMin && hasMax) return `$${Number(min).toLocaleString()} - $${Number(max).toLocaleString()}`;
-    if (hasMin) return `From $${Number(min).toLocaleString()}`;
-    if (hasMax) return `Up to $${Number(max).toLocaleString()}`;
-    return 'N/A';
-  };
 
   function findMatchingLocationIndex(locations, property) {
     const target = property.address?.oneLine?.toLowerCase();
     if (!target) return -1;
-    const targetWords = target.split(/[,\s]+/).filter(Boolean);
 
+    const targetWords = target.split(/[,\s]+/).filter(Boolean);
+    const postalCode = property.address?.postal1;
+    const hasPostalCode = postalCode && /^\d+$/.test(postalCode);
 
     for (let i = 0; i < locations.length; i++) {
       const loc = locations[i];
       const parts = String(loc).split("/").map(p => p.trim().toLowerCase()).filter(Boolean);
 
-
       for (const part of parts) {
         const partWords = part.split(/[,\s]+/).filter(Boolean);
         if (partWords.length === 0) continue;
+
+        // Check for postal code match first (if both have postal codes)
+        if (hasPostalCode) {
+          const postalMatch = partWords.some(word =>
+            /^\d+$/.test(word) && word === postalCode
+          );
+          if (postalMatch) return i;
+        }
+
+        // Original address matching logic
         let matches = 0;
         for (const word of partWords) {
           if (targetWords.includes(word)) matches++;
@@ -94,137 +97,111 @@ export default function ValuationResult() {
   const calculateBuyerMatch = useCallback((property, buyer) => {
     let score = 0, total = 0;
 
-    const zoning = Array.isArray(buyer.zoningTypes) ? buyer.zoningTypes : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+    // --- Normalize buyer zoning ---
+    const zoning = Array.isArray(buyer.zoningTypes)
+      ? buyer.zoningTypes
+      : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+
+    // --- Normalize buyer locations ---
     const rawLocations = Array.isArray(buyer.buyingLocations)
       ? buyer.buyingLocations
       : (buyer.buyingLocations ? [buyer.buyingLocations] : []);
 
     const locations = rawLocations.flatMap(loc => {
-      if (loc && typeof loc === 'object') {
+      if (loc && typeof loc === "object") {
         if (loc.label) loc = loc.label;
         else if (loc.name) loc = loc.name;
         else if (loc.value) loc = loc.value;
         else if (loc.location) loc = loc.location;
         else loc = JSON.stringify(loc);
       }
-      return String(loc).split('/').map(s => s.trim()).filter(Boolean);
+      return String(loc).split("/").map(s => s.trim()).filter(Boolean);
     });
 
-    const mins = parseBudgetField(buyer.budgetMin);
-    const maxs = parseBudgetField(buyer.budgetMax);
+    const pricePerValues = parseBudgetField(buyer.pricePer);
 
-
+    // --- Match by city ---
     total++;
-    if (property.address?.locality?.toLowerCase() === String(buyer.city || '').toLowerCase()) score++;
+    if (property.address?.locality?.toLowerCase() === String(buyer.city || "").toLowerCase()) score++;
 
+    // --- Match by country ---
     total++;
-    if (property.address?.country?.toLowerCase() === String(buyer.country || '').toLowerCase()) score++;
+    if (property.address?.country?.toLowerCase() === String(buyer.country || "").toLowerCase()) score++;
 
+    // --- Match by zoning ---
     total++;
-    if (zoning.some(z => String(z || '').toLowerCase() === property.lot?.zoningType?.toLowerCase())) score++;
+    if (zoning.some(z => String(z || "").toLowerCase() === property.lot?.zoningType?.toLowerCase())) score++;
 
+    // --- Match by locations ---
     total++;
     const matchedIndex = findMatchingLocationIndex(locations, property);
     if (matchedIndex > -1) score++;
 
+    // --- Match by price ---
     total++;
-    const price = Number(property.assessment?.assessed?.assdTtlValue);
+    const rawPropertyPrice = property?.assessment?.assessed?.assdTtlValue;
+    const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, "")); // force numeric
+
     let matchedRange = null;
     let usedIndex = -1;
+    let isPriceMatched = false;
 
-    const isValidNumber = v => typeof v === 'number' && !isNaN(v);
+    const isValidNumber = v => typeof v === "number" && !isNaN(v);
 
-    if (!isNaN(price)) {
-      if (matchedIndex > -1) {
-        const min = (mins.length > matchedIndex ? mins[matchedIndex] : NaN);
-        const max = (maxs.length > matchedIndex ? maxs[matchedIndex] : NaN);
-
-        const hasMin = isValidNumber(min);
-        const hasMax = isValidNumber(max);
-
-        if (hasMin && hasMax && price >= min && price <= max) {
-          score++;
-          usedIndex = matchedIndex;
-        } else if (hasMin && !hasMax && price >= min) {
-          score++;
-          usedIndex = matchedIndex;
-        } else if (!hasMin && hasMax && price <= max) {
-          score++;
-          usedIndex = matchedIndex;
-        } else {
-          usedIndex = matchedIndex;
+    // Get the first valid price value from buyer
+    const getBuyerPrice = (index = -1) => {
+      if (Array.isArray(pricePerValues) && pricePerValues.length > 0) {
+        // If specific index is requested and valid, use it
+        if (index >= 0 && index < pricePerValues.length && isValidNumber(pricePerValues[index])) {
+          return pricePerValues[index];
         }
-
-        if (hasMin || hasMax) matchedRange = buildRangeString(min, max);
-        else matchedRange = null;
-      } else {
-        const maxLen = Math.max(mins.length, maxs.length, 0);
-
-        const directMatches = [];
-        for (let i = 0; i < maxLen; i++) {
-          const min = mins[i];
-          const max = maxs[i];
-          const hasMin = isValidNumber(min);
-          const hasMax = isValidNumber(max);
-
-          if (hasMin && hasMax) {
-            if (price >= min && price <= max) directMatches.push({ i, min, max, width: max - min });
-          } else if (hasMin && !hasMax) {
-            if (price >= min) directMatches.push({ i, min, max, width: Infinity });
-          } else if (!hasMin && hasMax) {
-            if (price <= max) directMatches.push({ i, min, max, width: Infinity });
+        // Otherwise find the first valid price value
+        for (let i = 0; i < pricePerValues.length; i++) {
+          if (isValidNumber(pricePerValues[i])) {
+            return pricePerValues[i];
           }
-        }
-
-        if (directMatches.length > 0) {
-          directMatches.sort((a, b) => (a.width || Infinity) - (b.width || Infinity));
-          usedIndex = directMatches[0].i;
-          matchedRange = buildRangeString(mins[usedIndex], maxs[usedIndex]);
-          score++;
-        } else if (maxLen > 0) {
-          let best = { i: -1, dist: Infinity };
-          for (let i = 0; i < maxLen; i++) {
-            const min = mins[i];
-            const max = maxs[i];
-            const hasMin = isValidNumber(min);
-            const hasMax = isValidNumber(max);
-            let dist = Infinity;
-
-            if (hasMin && hasMax) {
-              if (price < min) dist = min - price;
-              else if (price > max) dist = price - max;
-              else dist = 0;
-            } else if (hasMin && !hasMax) {
-              dist = price < min ? (min - price) : 0;
-            } else if (!hasMin && hasMax) {
-              dist = price > max ? (price - max) : 0;
-            }
-
-            if (dist < best.dist) {
-              best = { i, dist };
-            }
-          }
-
-          if (best.i > -1 && best.dist < Infinity) {
-            usedIndex = best.i;
-            matchedRange = buildRangeString(mins[usedIndex], maxs[usedIndex]);
-          } else {
-            usedIndex = -1;
-            matchedRange = null;
-          }
-        } else {
-          usedIndex = -1;
-          matchedRange = null;
         }
       }
+      return NaN;
+    };
+
+    const buyerPrice = getBuyerPrice(matchedIndex);
+    const hasValidPrice = isValidNumber(buyerPrice);
+
+    if (!isNaN(propertyPrice) && propertyPrice > 0) {
+      if (hasValidPrice) {
+        usedIndex = matchedIndex > -1 ? matchedIndex : 0;
+        matchedRange = `$${Math.round(buyerPrice).toLocaleString()}`;
+
+        // Check if property price is available and within ±1000 range
+        if (Math.abs(propertyPrice - buyerPrice) <= 1000) {
+          score++;
+          isPriceMatched = true;
+        }
+      } else {
+        // ✅ fallback: show 50% of property price
+        const fiftyPercentPrice = propertyPrice * 0.5;
+        matchedRange = `$${Math.round(fiftyPercentPrice).toLocaleString()} (50% of property price)`;
+      }
+    } else {
+      matchedRange = "No price data";
     }
 
-
     const percent = Math.round((score / total) * 100);
-    return { percent, matchedRange, matchedIndex: usedIndex };
+    return { percent, matchedRange, matchedIndex: usedIndex, isPriceMatched };
   }, []);
 
+  const formatPrice = (buyer) => {
+    if (!buyer.matchedRange) return 'N/A';
 
+    if (buyer.isPriceMatched) {
+      return <span className="text-green-400 font-bold">{buyer.matchedRange}</span>;
+    } else if (buyer.matchedRange.includes('50% of property price')) {
+      return <span className="text-blue-400">{buyer.matchedRange}</span>;
+    } else {
+      return <span className="text-green-400">{buyer.matchedRange}</span>;
+    }
+  };
   useEffect(() => {
     if (fullAddress && initialLoad) {
       const query = decodeURIComponent(fullAddress);
@@ -594,7 +571,7 @@ export default function ValuationResult() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Rank</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Buyer</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Fit Score</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Offer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Price Per Acre</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[var(--primary-gray-text)] uppercase tracking-wider border-b border-[var(--quaternary-gray-bg)]">Timeline</th>
                   </tr>
                 </thead>
@@ -610,6 +587,10 @@ export default function ValuationResult() {
                     } else {
                       rankCircle = <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--tertiary-gray-bg)] text-white font-bold mr-2">{index + 1}</span>;
                     }
+
+
+
+
                     return (
                       <tr
                         key={buyer.id || index}
@@ -621,7 +602,7 @@ export default function ValuationResult() {
                         <td className="px-4 py-3 whitespace-nowrap font-bold">{rankCircle}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-white">Buyer {index + 1}</td>
                         <td className="px-4 py-3 whitespace-nowrap font-bold" style={{ color: buyer.matchPercent >= 90 ? '#22c55e' : buyer.matchPercent >= 80 ? '#f59e42' : '#eab308' }}>{buyer.matchPercent}%</td>
-                        <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatBudget(buyer)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatPrice(buyer)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-gray-200 flex items-center gap-1">{formatValue(buyer.timeline)}</td>
                       </tr>
                     );
@@ -631,7 +612,6 @@ export default function ValuationResult() {
             )}
           </div>
         </motion.div>
-
         {/* Market Analysis & Investment Metrics (API does not provide, so show description and status) */}
         <motion.div
           variants={gridContainer}
