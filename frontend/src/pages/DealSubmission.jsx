@@ -52,7 +52,7 @@ export default function DealSubmission() {
     return -1;
   }
   const parseBudgetField = (field) => {
-    if (field == null) return [];
+    if (field == null || field === "") return [];
     if (Array.isArray(field)) return field.map(v => {
       const n = Number(String(v).replace(/[^0-9.-]+/g, ''));
       return isNaN(n) ? NaN : n;
@@ -77,134 +77,105 @@ export default function DealSubmission() {
   };
 
   const calculateBuyerMatch = useCallback((property, buyer) => {
-    if (!property || !buyer) return 0;
     let score = 0, total = 0;
-    const zoning = Array.isArray(buyer.zoningTypes) ? buyer.zoningTypes : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+
+    // --- Normalize buyer zoning ---
+    const zoning = Array.isArray(buyer.zoningTypes)
+      ? buyer.zoningTypes
+      : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+
+    // --- Normalize buyer locations ---
     const rawLocations = Array.isArray(buyer.buyingLocations)
       ? buyer.buyingLocations
       : (buyer.buyingLocations ? [buyer.buyingLocations] : []);
 
     const locations = rawLocations.flatMap(loc => {
-      if (loc && typeof loc === 'object') {
+      if (loc && typeof loc === "object") {
         if (loc.label) loc = loc.label;
         else if (loc.name) loc = loc.name;
         else if (loc.value) loc = loc.value;
         else if (loc.location) loc = loc.location;
         else loc = JSON.stringify(loc);
       }
-      return String(loc).split('/').map(s => s.trim()).filter(Boolean);
+      return String(loc).split("/").map(s => s.trim()).filter(Boolean);
     });
 
-    const mins = parseBudgetField(buyer.budgetMin);
-    const maxs = parseBudgetField(buyer.budgetMax);
+    const pricePerValues = parseBudgetField(buyer.pricePer);
 
+    // --- Match by city ---
     total++;
-    if (property.propertyCity.toLowerCase() === String(buyer.city || '').toLowerCase()) score++;
+    if (property.propertyCity.toLowerCase() === String(buyer.city || "").toLowerCase()) score++;
 
+    // --- Match by country ---
     total++;
-    if (property.propertyCountry.toLowerCase() === String(buyer.country || '').toLowerCase()) score++;
+    if (property.propertyCountry.toLowerCase() === String(buyer.country || "").toLowerCase()) score++;
 
+    // --- Match by zoning ---
     total++;
-    if (zoning.some(z => String(z || '').toLowerCase() === property.propertyZoning?.toLowerCase())) score++;
+    if (zoning.some(z => String(z || "").toLowerCase() === property.propertyZoning.toLowerCase())) score++;
 
+    // --- Match by locations ---
     total++;
     const matchedIndex = findMatchingLocationIndex(locations, property);
     if (matchedIndex > -1) score++;
 
+    // --- Match by price ---
     total++;
-    const price = Number(property.propertyPrice);
+    const rawPropertyPrice = property.propertyPrice;
+    const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, ""));
+
     let matchedRange = null;
     let usedIndex = -1;
+    let isPriceMatched = false;
+    let isFallbackPrice = false;
 
-    const isValidNumber = v => typeof v === 'number' && !isNaN(v);
+    const isValidNumber = v => typeof v === "number" && !isNaN(v);
 
-    if (!isNaN(price)) {
-      if (matchedIndex > -1) {
-        const min = (mins.length > matchedIndex ? mins[matchedIndex] : NaN);
-        const max = (maxs.length > matchedIndex ? maxs[matchedIndex] : NaN);
-
-        const hasMin = isValidNumber(min);
-        const hasMax = isValidNumber(max);
-
-        if (hasMin && hasMax && price >= min && price <= max) {
-          score++;
-          usedIndex = matchedIndex;
-        } else if (hasMin && !hasMax && price >= min) {
-          score++;
-          usedIndex = matchedIndex;
-        } else if (!hasMin && hasMax && price <= max) {
-          score++;
-          usedIndex = matchedIndex;
-        } else {
-          usedIndex = matchedIndex;
+    const getBuyerPrice = (index = -1) => {
+      if (Array.isArray(pricePerValues) && pricePerValues.length > 0) {
+        if (index >= 0 && index < pricePerValues.length && isValidNumber(pricePerValues[index])) {
+          return pricePerValues[index];
         }
-
-        if (hasMin || hasMax) matchedRange = buildRangeString(min, max);
-        else matchedRange = null;
-      } else {
-        const maxLen = Math.max(mins.length, maxs.length, 0);
-
-        const directMatches = [];
-        for (let i = 0; i < maxLen; i++) {
-          const min = mins[i];
-          const max = maxs[i];
-          const hasMin = isValidNumber(min);
-          const hasMax = isValidNumber(max);
-
-          if (hasMin && hasMax) {
-            if (price >= min && price <= max) directMatches.push({ i, min, max, width: max - min });
-          } else if (hasMin && !hasMax) {
-            if (price >= min) directMatches.push({ i, min, max, width: Infinity });
-          } else if (!hasMin && hasMax) {
-            if (price <= max) directMatches.push({ i, min, max, width: Infinity });
+        for (let i = 0; i < pricePerValues.length; i++) {
+          if (isValidNumber(pricePerValues[i])) {
+            return pricePerValues[i];
           }
-        }
-
-        if (directMatches.length > 0) {
-          directMatches.sort((a, b) => (a.width || Infinity) - (b.width || Infinity));
-          usedIndex = directMatches[0].i;
-          matchedRange = buildRangeString(mins[usedIndex], maxs[usedIndex]);
-          score++;
-        } else if (maxLen > 0) {
-          let best = { i: -1, dist: Infinity };
-          for (let i = 0; i < maxLen; i++) {
-            const min = mins[i];
-            const max = maxs[i];
-            const hasMin = isValidNumber(min);
-            const hasMax = isValidNumber(max);
-            let dist = Infinity;
-
-            if (hasMin && hasMax) {
-              if (price < min) dist = min - price;
-              else if (price > max) dist = price - max;
-              else dist = 0;
-            } else if (hasMin && !hasMax) {
-              dist = price < min ? (min - price) : 0;
-            } else if (!hasMin && hasMax) {
-              dist = price > max ? (price - max) : 0;
-            }
-
-            if (dist < best.dist) {
-              best = { i, dist };
-            }
-          }
-
-          if (best.i > -1 && best.dist < Infinity) {
-            usedIndex = best.i;
-            matchedRange = buildRangeString(mins[usedIndex], maxs[usedIndex]);
-          } else {
-            usedIndex = -1;
-            matchedRange = null;
-          }
-        } else {
-          usedIndex = -1;
-          matchedRange = null;
         }
       }
+      return NaN;
+    };
+
+    const buyerPrice = getBuyerPrice(matchedIndex);
+    const hasValidPrice = isValidNumber(buyerPrice);
+
+    if (!isNaN(propertyPrice) && propertyPrice > 0) {
+      if (hasValidPrice) {
+        usedIndex = matchedIndex > -1 ? matchedIndex : 0;
+        matchedRange = `$${Math.round(buyerPrice).toLocaleString()}`;
+
+        // Check if property price is available and within ±1000 range
+        if (Math.abs(propertyPrice - buyerPrice) <= 1000) {
+          score++;
+          isPriceMatched = true;
+        }
+      } else {
+        // ✅ fallback: show 50% of property price
+        const fiftyPercentPrice = propertyPrice * 0.5;
+        matchedRange = `$${Math.round(fiftyPercentPrice).toLocaleString()} (50% of property price)`;
+        isFallbackPrice = true;
+      }
+    } else {
+      matchedRange = "No price data";
     }
 
     const percent = Math.round((score / total) * 100);
-    return { percent, matchedRange, matchedIndex: usedIndex };
+    return {
+      percent,
+      matchedRange,
+      matchedIndex: usedIndex,
+      isPriceMatched,
+      isFallbackPrice
+    };
   }, []);
 
   const initialFormData = location.state?.contractData
