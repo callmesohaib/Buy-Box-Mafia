@@ -97,6 +97,11 @@ function AppContent() {
               <About />
             </ProtectedRoute>
           } />
+          <Route path="/profile" element={
+            <ProtectedRoute allowedRoles={["scout"]}>
+              <ScoutProfile />
+            </ProtectedRoute>
+          } />
           <Route path="/property-search" element={
             <ProtectedRoute allowedRoles={["scout"]}>
               <PropertySearch />
@@ -152,6 +157,7 @@ function AppContent() {
 
 // App.jsx
 import { PropertyProvider } from './store/PropertyContext';
+import ScoutProfile from "./pages/ScoutProfile";
 
 function App() {
   return (

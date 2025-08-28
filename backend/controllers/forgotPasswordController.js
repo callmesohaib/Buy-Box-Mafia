@@ -31,7 +31,7 @@ const forgotPasswordController = {
       const userId = userDoc.id;
       // Generate a secure token
       const token = crypto.randomBytes(32).toString("hex");
-      const expires = Date.now() + 1000 * 60 * 30; 
+      const expires = Date.now() + 1000 * 60 * 30;
       // Save token and expiry to user doc
       await db.collection("users").doc(userId).update({
         resetPasswordToken: token,
@@ -129,6 +129,70 @@ const forgotPasswordController = {
       next(error);
     }
   },
+
+changePassword: async (req, res, next) => {
+  try {
+    const { userId, currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID, current password, and new password are required",
+      });
+    }
+
+    if (newPassword.length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 4 characters long",
+      });
+    }
+
+    // Fetch user from Firestore
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userDoc.data();
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in Firestore
+    await db.collection("users").doc(userId).update({
+      password: hashedPassword,
+    });
+
+    // Success response
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+},
 };
 
 module.exports = forgotPasswordController;

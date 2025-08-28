@@ -17,6 +17,7 @@ export default function Navbar() {
     { path: "/property-search", label: "Property Search", show: true },
     { path: "/about", label: "About Us", show: true },
     { path: "/deals", label: "My Deals", show: true },
+    { path: "/profile", label: "My Profile", show: true },
     { path: "/logout", label: "Logout", show: isAuthenticated, isButton: true },
   ];
 
