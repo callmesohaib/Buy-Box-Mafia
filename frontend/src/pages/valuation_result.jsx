@@ -43,7 +43,7 @@ export default function ValuationResult() {
   const MATCH_RATIO = 0.6;
 
   const parseBudgetField = (field) => {
-    if (field == null) return [];
+    if (field == null || field === "") return [];
     if (Array.isArray(field)) return field.map(v => {
       const n = Number(String(v).replace(/[^0-9.-]+/g, ''));
       return isNaN(n) ? NaN : n;
@@ -140,22 +140,20 @@ export default function ValuationResult() {
     // --- Match by price ---
     total++;
     const rawPropertyPrice = property?.assessment?.assessed?.assdTtlValue;
-    const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, "")); // force numeric
+    const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, ""));
 
     let matchedRange = null;
     let usedIndex = -1;
     let isPriceMatched = false;
+    let isFallbackPrice = false;
 
     const isValidNumber = v => typeof v === "number" && !isNaN(v);
 
-    // Get the first valid price value from buyer
     const getBuyerPrice = (index = -1) => {
       if (Array.isArray(pricePerValues) && pricePerValues.length > 0) {
-        // If specific index is requested and valid, use it
         if (index >= 0 && index < pricePerValues.length && isValidNumber(pricePerValues[index])) {
           return pricePerValues[index];
         }
-        // Otherwise find the first valid price value
         for (let i = 0; i < pricePerValues.length; i++) {
           if (isValidNumber(pricePerValues[i])) {
             return pricePerValues[i];
@@ -182,21 +180,28 @@ export default function ValuationResult() {
         // ✅ fallback: show 50% of property price
         const fiftyPercentPrice = propertyPrice * 0.5;
         matchedRange = `$${Math.round(fiftyPercentPrice).toLocaleString()} (50% of property price)`;
+        isFallbackPrice = true;
       }
     } else {
       matchedRange = "No price data";
     }
 
     const percent = Math.round((score / total) * 100);
-    return { percent, matchedRange, matchedIndex: usedIndex, isPriceMatched };
+    return {
+      percent,
+      matchedRange,
+      matchedIndex: usedIndex,
+      isPriceMatched,
+      isFallbackPrice
+    };
   }, []);
 
   const formatPrice = (buyer) => {
-    if (!buyer.matchedRange) return 'N/A';
+    if (!buyer.matchedRange || buyer.matchedRange === "No price data") return 'N/A';
 
     if (buyer.isPriceMatched) {
       return <span className="text-green-400 font-bold">{buyer.matchedRange}</span>;
-    } else if (buyer.matchedRange.includes('50% of property price')) {
+    } else if (buyer.isFallbackPrice) {
       return <span className="text-blue-400">{buyer.matchedRange}</span>;
     } else {
       return <span className="text-green-400">{buyer.matchedRange}</span>;
@@ -231,12 +236,14 @@ export default function ValuationResult() {
 
         const matches = data
           .map(buyer => {
-            const { percent, matchedRange, matchedIndex } = calculateBuyerMatch(propertyData, buyer);
+            const { percent, matchedRange, matchedIndex, isPriceMatched, isFallbackPrice } = calculateBuyerMatch(propertyData, buyer);
             return {
               ...buyer,
               matchPercent: percent,
               matchedRange,
-              matchedRangeIndex: matchedIndex
+              matchedRangeIndex: matchedIndex,
+              isPriceMatched,
+              isFallbackPrice
             };
           })
           .filter(b => b.matchPercent > 0)
@@ -398,7 +405,11 @@ export default function ValuationResult() {
                   There are <span className="font-bold">{matchedBuyers.length}</span> buyers who match this property.
                   We can sell it to them for <span className="font-bold">
                     {matchedBuyers.length > 0 ?
-                      `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()}` :
+                      (() => {
+                        const topBuyer = matchedBuyers[0];
+                        const priceMatch = topBuyer.matchedRange?.match(/\$([\d,]+)/);
+                        return priceMatch ? `$${parseInt(priceMatch[1].replace(/,/g, '')).toLocaleString()}` : 'N/A';
+                      })() :
                       'N/A'
                     }
                   </span>.
@@ -409,7 +420,11 @@ export default function ValuationResult() {
                     <span className="text-green-200">
                       Top Offer Price Per Acre: {
                         matchedBuyers.length > 0 ?
-                          `$${Math.max(...matchedBuyers.map(b => b.pricePer || 0)).toLocaleString()} Per Acre` :
+                          (() => {
+                            const topBuyer = matchedBuyers[0];
+                            const priceMatch = topBuyer.matchedRange?.match(/\$([\d,]+)/);
+                            return priceMatch ? `$${parseInt(priceMatch[1].replace(/,/g, '')).toLocaleString()} Per Acre` : 'N/A';
+                          })() :
                           'N/A'
                       }
                     </span>
@@ -602,7 +617,7 @@ export default function ValuationResult() {
                         <td className="px-4 py-3 whitespace-nowrap font-bold">{rankCircle}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-white">Buyer {index + 1}</td>
                         <td className="px-4 py-3 whitespace-nowrap font-bold" style={{ color: buyer.matchPercent >= 90 ? '#22c55e' : buyer.matchPercent >= 80 ? '#f59e42' : '#eab308' }}>{buyer.matchPercent}%</td>
-                        <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatPrice(buyer)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-bold text-green-400">{formatPrice(buyer) || 29}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-gray-200 flex items-center gap-1">{formatValue(buyer.timeline)}</td>
                       </tr>
                     );
