@@ -7,6 +7,7 @@ export default function ForgotPassword() {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
+    const API_BASE_URL = import.meta.env.VITE_BASE_URL;
 
     const handleVerifyEmail = async (e) => {
         e.preventDefault();
