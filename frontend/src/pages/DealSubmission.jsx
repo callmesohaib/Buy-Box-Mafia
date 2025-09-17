@@ -8,6 +8,7 @@ import { addDeal, updateDeal } from "../services/dealsService";
 import { uploadFileToServer, deleteUploadedFile } from "../services/contractService";
 import { useProperty } from "../store/PropertyContext";
 import { fadeInDown, staggerContainer, staggerItem, buttonHover, modalBackdrop, modalContent } from "../animations/animation";
+import Papa from "papaparse"; // 👈 add this
 
 export default function DealSubmission() {
   const { user } = useAuth();
@@ -28,6 +29,28 @@ export default function DealSubmission() {
   const dealId = location.state?.dealId;
   const API_BASE_URL = import.meta.env.VITE_BASE_URL;
   const MATCH_RATIO = 0.6;
+
+  // --- Add state for CSV data
+  const [csvData, setCsvData] = useState([]);
+
+  // --- Fetch CSV like before
+  useEffect(() => {
+    fetch("/CompareData.csv")
+      .then((response) => response.text())
+      .then((csvText) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (result) => {
+            setCsvData(result.data);
+          },
+        });
+      })
+      .catch((error) => {
+        console.error("Error fetching the CSV file:", error);
+      });
+  }, []);
+
 
   function findMatchingLocationIndex(locations, property) {
     const target = property.propertyAddress?.toLowerCase();
@@ -76,105 +99,165 @@ export default function DealSubmission() {
     return 'N/A';
   };
 
-  const calculateBuyerMatch = useCallback((property, buyer) => {
+  // const calculateBuyerMatch = useCallback((property, buyer) => {
+  //   let score = 0, total = 0;
+
+  //   // --- Normalize buyer zoning ---
+  //   const zoning = Array.isArray(buyer.zoningTypes)
+  //     ? buyer.zoningTypes
+  //     : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+
+  //   // --- Normalize buyer locations ---
+  //   const rawLocations = Array.isArray(buyer.buyingLocations)
+  //     ? buyer.buyingLocations
+  //     : (buyer.buyingLocations ? [buyer.buyingLocations] : []);
+
+  //   const locations = rawLocations.flatMap(loc => {
+  //     if (loc && typeof loc === "object") {
+  //       if (loc.label) loc = loc.label;
+  //       else if (loc.name) loc = loc.name;
+  //       else if (loc.value) loc = loc.value;
+  //       else if (loc.location) loc = loc.location;
+  //       else loc = JSON.stringify(loc);
+  //     }
+  //     return String(loc).split("/").map(s => s.trim()).filter(Boolean);
+  //   });
+
+  //   const pricePerValues = parseBudgetField(buyer.pricePer);
+
+  //   // --- Match by city ---
+  //   total++;
+  //   if (property.propertyCity.toLowerCase() === String(buyer.city || "").toLowerCase()) score++;
+
+  //   // --- Match by country ---
+  //   total++;
+  //   if (property.propertyCountry.toLowerCase() === String(buyer.country || "").toLowerCase()) score++;
+
+  //   // --- Match by zoning ---
+  //   total++;
+  //   if (zoning.some(z => String(z || "").toLowerCase() === property.propertyZoning.toLowerCase())) score++;
+
+  //   // --- Match by locations ---
+  //   total++;
+  //   const matchedIndex = findMatchingLocationIndex(locations, property);
+  //   if (matchedIndex > -1) score++;
+
+  //   // --- Match by price ---
+  //   total++;
+  //   const rawPropertyPrice = property.propertyPrice;
+  //   const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, ""));
+
+  //   let matchedRange = null;
+  //   let usedIndex = -1;
+  //   let isPriceMatched = false;
+  //   let isFallbackPrice = false;
+
+  //   const isValidNumber = v => typeof v === "number" && !isNaN(v);
+
+  //   const getBuyerPrice = (index = -1) => {
+  //     if (Array.isArray(pricePerValues) && pricePerValues.length > 0) {
+  //       if (index >= 0 && index < pricePerValues.length && isValidNumber(pricePerValues[index])) {
+  //         return pricePerValues[index];
+  //       }
+  //       for (let i = 0; i < pricePerValues.length; i++) {
+  //         if (isValidNumber(pricePerValues[i])) {
+  //           return pricePerValues[i];
+  //         }
+  //       }
+  //     }
+  //     return NaN;
+  //   };
+
+  //   const buyerPrice = getBuyerPrice(matchedIndex);
+  //   const hasValidPrice = isValidNumber(buyerPrice);
+
+  //   if (!isNaN(propertyPrice) && propertyPrice > 0) {
+  //     if (hasValidPrice) {
+  //       usedIndex = matchedIndex > -1 ? matchedIndex : 0;
+  //       matchedRange = `$${Math.round(buyerPrice).toLocaleString()}`;
+
+  //       // Check if property price is available and within ±1000 range
+  //       if (Math.abs(propertyPrice - buyerPrice) <= 1000) {
+  //         score++;
+  //         isPriceMatched = true;
+  //       }
+  //     } else {
+  //       // ✅ fallback: show 50% of property price
+  //       const fiftyPercentPrice = propertyPrice * 0.5;
+  //       matchedRange = `$${Math.round(fiftyPercentPrice).toLocaleString()} (50% of property price)`;
+  //       isFallbackPrice = true;
+  //     }
+  //   } else {
+  //     matchedRange = "No price data";
+  //   }
+
+  //   const percent = Math.round((score / total) * 100);
+  //   return {
+  //     percent,
+  //     matchedRange,
+  //     matchedIndex: usedIndex,
+  //     isPriceMatched,
+  //     isFallbackPrice
+  //   };
+  // }, []);
+
+
+  const calculateBuyerCsvMatch = useCallback((buyer, csvRow) => {
     let score = 0, total = 0;
 
-    // --- Normalize buyer zoning ---
-    const zoning = Array.isArray(buyer.zoningTypes)
-      ? buyer.zoningTypes
-      : (buyer.zoningTypes ? [buyer.zoningTypes] : []);
+    // --- City
+    total++;
+    const buyerCity = buyer.city?.toLowerCase() || "N/A";
+    const csvCity = csvRow["City name"]?.toLowerCase() || "N/A";
+    const cityMatch = buyerCity === csvCity && buyerCity !== "N/A";
+    if (cityMatch) score++;
 
-    // --- Normalize buyer locations ---
-    const rawLocations = Array.isArray(buyer.buyingLocations)
-      ? buyer.buyingLocations
-      : (buyer.buyingLocations ? [buyer.buyingLocations] : []);
+    // --- Zip
+    total++;
+    const buyerLocations = Array.isArray(buyer.buyingLocations)
+      ? buyer.buyingLocations.map(l => String(l).trim())
+      : [String(buyer.buyingLocations || "").trim()];
+    const csvZip = String(csvRow["Zip Code"] || "").trim();
 
-    const locations = rawLocations.flatMap(loc => {
-      if (loc && typeof loc === "object") {
-        if (loc.label) loc = loc.label;
-        else if (loc.name) loc = loc.name;
-        else if (loc.value) loc = loc.value;
-        else if (loc.location) loc = loc.location;
-        else loc = JSON.stringify(loc);
-      }
-      return String(loc).split("/").map(s => s.trim()).filter(Boolean);
+    let matchedIndex = -1;
+    buyerLocations.forEach((loc, idx) => {
+      const parts = loc.split("/").map(p => p.trim());
+      if (parts.includes(csvZip)) matchedIndex = idx;
     });
 
-    const pricePerValues = parseBudgetField(buyer.pricePer);
+    const zipMatch = matchedIndex !== -1;
+    if (zipMatch) score++;
 
-    // --- Match by city ---
+    // --- PPA
     total++;
-    if (property.propertyCity.toLowerCase() === String(buyer.city || "").toLowerCase()) score++;
+    let ppaMatch = false;
+    const priceParts = String(buyer.pricePer || "").split("/").map(p => p.trim());
+    const buyerPriceRaw = zipMatch ? (priceParts[matchedIndex] || "") : (priceParts[0] || "");
+    const buyerPrice = parseBudgetField(buyerPriceRaw)[0];
+    const csvPrice = Number(String(csvRow["PPA"]).replace(/[^0-9.-]+/g, ""));
 
-    // --- Match by country ---
-    total++;
-    if (property.propertyCountry.toLowerCase() === String(buyer.country || "").toLowerCase()) score++;
-
-    // --- Match by zoning ---
-    total++;
-    if (zoning.some(z => String(z || "").toLowerCase() === property.propertyZoning.toLowerCase())) score++;
-
-    // --- Match by locations ---
-    total++;
-    const matchedIndex = findMatchingLocationIndex(locations, property);
-    if (matchedIndex > -1) score++;
-
-    // --- Match by price ---
-    total++;
-    const rawPropertyPrice = property.propertyPrice;
-    const propertyPrice = Number(String(rawPropertyPrice).replace(/[^0-9.-]+/g, ""));
-
-    let matchedRange = null;
-    let usedIndex = -1;
-    let isPriceMatched = false;
-    let isFallbackPrice = false;
-
-    const isValidNumber = v => typeof v === "number" && !isNaN(v);
-
-    const getBuyerPrice = (index = -1) => {
-      if (Array.isArray(pricePerValues) && pricePerValues.length > 0) {
-        if (index >= 0 && index < pricePerValues.length && isValidNumber(pricePerValues[index])) {
-          return pricePerValues[index];
-        }
-        for (let i = 0; i < pricePerValues.length; i++) {
-          if (isValidNumber(pricePerValues[i])) {
-            return pricePerValues[i];
-          }
-        }
+    if (!isNaN(buyerPrice) && !isNaN(csvPrice)) {
+      if (Math.abs(buyerPrice - csvPrice) <= 1000) {
+        ppaMatch = true;
+        score++;
       }
-      return NaN;
-    };
-
-    const buyerPrice = getBuyerPrice(matchedIndex);
-    const hasValidPrice = isValidNumber(buyerPrice);
-
-    if (!isNaN(propertyPrice) && propertyPrice > 0) {
-      if (hasValidPrice) {
-        usedIndex = matchedIndex > -1 ? matchedIndex : 0;
-        matchedRange = `$${Math.round(buyerPrice).toLocaleString()}`;
-
-        // Check if property price is available and within ±1000 range
-        if (Math.abs(propertyPrice - buyerPrice) <= 1000) {
-          score++;
-          isPriceMatched = true;
-        }
-      } else {
-        // ✅ fallback: show 50% of property price
-        const fiftyPercentPrice = propertyPrice * 0.5;
-        matchedRange = `$${Math.round(fiftyPercentPrice).toLocaleString()} (50% of property price)`;
-        isFallbackPrice = true;
-      }
-    } else {
-      matchedRange = "No price data";
     }
+
+    // --- Timeline
+    total++;
+    const buyerTimeline = Number(String(buyer.timeline).replace(/[^0-9.-]+/g, ""));
+    const csvTimeline = Number(String(csvRow["Months of Supply"]).replace(/[^0-9.-]+/g, ""));
+    const timelineMatch = !isNaN(buyerTimeline) && !isNaN(csvTimeline) && buyerTimeline === csvTimeline;
+    if (timelineMatch) score++;
 
     const percent = Math.round((score / total) * 100);
     return {
       percent,
-      matchedRange,
-      matchedIndex: usedIndex,
-      isPriceMatched,
-      isFallbackPrice
+      city: buyer.city || "N/A",
+      zip: buyer.buyingLocations || [],
+      ppa: buyerPrice || "No price data",
+      timeline: buyer.timeline || "N/A",
+      matchedPPA: ppaMatch ? buyerPrice : "No price data"
     };
   }, []);
 
@@ -268,7 +351,7 @@ export default function DealSubmission() {
 
   useEffect(() => {
     if (isEditing && formData.matchedBuyers && formData.matchedBuyers.length > 0) return;
-    if (!formData.propertyData) return;
+    if (!csvData.length) return; // 👈 wait until CSV is loaded
 
     const fetchAndMatchBuyers = async () => {
       setBuyersLoading(true);
@@ -278,16 +361,22 @@ export default function DealSubmission() {
         const response = await fetch(`${API_BASE_URL}/buyers`);
         if (!response.ok) throw new Error("Failed to fetch buyers");
         const buyers = await response.json();
-        const matches = buyers
-          .map(buyer => {
-            const { percent, matchedRange, matchedIndex } = calculateBuyerMatch(initialFormData, buyer);
-            return {
-              ...buyer,
-              matchPercent: percent,
-              matchedRange,
-              matchedRangeIndex: matchedIndex
-            };
-          })
+
+        const matches = buyers.map(buyer => {
+          let bestMatch = { percent: 0 };
+          csvData.forEach(row => {
+            const match = calculateBuyerCsvMatch(buyer, row);
+            if (match.percent > bestMatch.percent) bestMatch = match;
+          });
+          return {
+            ...buyer,
+            matchPercent: bestMatch.percent,
+            matchedCity: bestMatch.city,
+            matchedZip: bestMatch.zip,
+            matchedPPA: bestMatch.ppa,
+            matchedTimeline: bestMatch.timeline,
+          };
+        })
           .filter(b => b.matchPercent > 0)
           .sort((a, b) => b.matchPercent - a.matchPercent);
 
@@ -295,7 +384,7 @@ export default function DealSubmission() {
           ...prev,
           matchedBuyers: matches,
           buyersCount: matches.length,
-          buyerIds: matches.map(b => b.id)
+          buyerIds: matches.map(b => b.id),
         }));
       } catch (err) {
         console.error("Buyer fetch/match error:", err);
@@ -306,7 +395,8 @@ export default function DealSubmission() {
     };
 
     fetchAndMatchBuyers();
-  }, [calculateBuyerMatch, isEditing]);
+  }, [csvData, calculateBuyerCsvMatch, isEditing]);
+
 
   useEffect(() => {
     if (location.state?.contractData) {
