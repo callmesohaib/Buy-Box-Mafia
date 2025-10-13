@@ -1,5 +1,5 @@
 Zip Code,City name,Count,DOM,Median Price,PPA,STR,Absorption Rate,Months of Supply,Action
-33974,Lehigh Acres,706,83.00,"$22,500","$87,110",77%,130%,8,
+33974,Lehigh Acres,706,83.00,"$22,500","$87,110",77%,130%,10,
 33972,Lehigh Acres,551,67.00,"$24,500","$59,988",91%,110%,7,
 33909,Cape Coral,455,106.00,"$51,000","$207,917",126%,79%,5,
 33993,Cape Coral,440,110.00,"$45,000","$181,818",66%,152%,9,
@@ -41,7 +41,7 @@ Zip Code,City name,Count,DOM,Median Price,PPA,STR,Absorption Rate,Months of Supp
 33911,Fort Myers,3,140.00,"$129,900","$501,544",75%,133%,8,
 33932,Fort Myers Beach,3,133.00,"$190,000","$1,515,152",18%,567%,34,
 34133,Bonita Springs,1,198.00,"$160,000","$411,311",100%,100%,6,
-33902,Fort Myers,0,0.00,$0,$0,0%,0%,8,
+33902,Fort Myers,0,0.00,$0,$2000,0%,0%,8,
 33906,Fort Myers,0,0.00,$0,$0,0%,0%,0,
 33921,Boca Grande,0,0.00,$0,$0,0%,0%,0,
 33929,Estero,0,0.00,$0,$0,0%,0%,0,

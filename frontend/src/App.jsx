@@ -108,7 +108,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route
-            path="/valuation/:fullAddress/*"
+            path="/valuation/:zip/*"
             element={
               <ProtectedRoute allowedRoles={["scout"]}>
                 <ValuationResult />
